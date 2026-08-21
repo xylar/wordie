@@ -7,8 +7,10 @@ from shapely.geometry import MultiPolygon, Polygon, box
 
 from wordie.payload import (
     CRS_NAME,
+    MAX_FLOOR_FRACTION,
     PayloadStats,
     build_payload,
+    display_tolerance,
     simplify_for_display,
 )
 from wordie.projections import area_km2, centroid_lonlat
@@ -193,3 +195,66 @@ class TestAttribution:
 
         assert 'not suitable for measurement' in payload['note']
         assert 'Cite the sources below, not this file' in payload['note']
+
+
+def staircase(x0: float, y0: float, cells: int, cell: float) -> Polygon:
+    """A diagonal edge as a raster traces it: one cell at a time."""
+    steps: list[tuple[float, float]] = []
+    for i in range(cells):
+        steps.append((x0 + i * cell, y0 + i * cell))
+        steps.append((x0 + (i + 1) * cell, y0 + i * cell))
+    far = x0 + cells * cell
+    return Polygon([*steps, (far, y0 - cells * cell), (x0, y0 - cells * cell)])
+
+
+class TestSourceGridFloor:
+    def test_flattens_the_staircase_the_raster_leaves(self) -> None:
+        # An outline traced from a 500 m mask runs along cell edges, and no
+        # ice front is stepped at 500 m. Without this floor the grid shows
+        # through on every shelf narrower than 250 km, which is 36 of the 52
+        # in the everyday answer pool.
+        stepped = staircase(0.0, 1.0e6, cells=100, cell=500.0)
+
+        with_floor, _h, _c = simplify_for_display(stepped, source_cell_m=500.0)
+        without, _h, _c = simplify_for_display(stepped, source_cell_m=0.0)
+
+        assert len(with_floor.exterior.coords) < len(without.exterior.coords)
+        assert len(with_floor.exterior.coords) < 20
+
+    def test_the_floor_is_capped_against_the_piece_not_the_shelf(
+        self,
+    ) -> None:
+        # Wordie is why. Its five fragments are strung over 63 km but the
+        # smallest is 3 km across, and a floor capped against the shelf would
+        # apply a whole cell to a fragment six cells wide and swallow it.
+        shelf_extent = 60_000.0
+        piece_extent = 3_000.0
+
+        against_piece = display_tolerance(shelf_extent, piece_extent)
+        against_shelf = display_tolerance(shelf_extent, shelf_extent)
+
+        assert against_piece < against_shelf
+        assert against_piece <= MAX_FLOOR_FRACTION * piece_extent
+
+    def test_a_small_fragment_keeps_its_detail_beside_a_large_one(
+        self,
+    ) -> None:
+        big = staircase(0.0, 1.0e6, cells=100, cell=500.0)
+        small = staircase(2.0e5, 1.0e6, cells=6, cell=500.0)
+        shelf = MultiPolygon([big, small])
+
+        simplified, _h, _c = simplify_for_display(shelf, source_cell_m=500.0)
+        pieces = sorted(simplified.geoms, key=lambda p: -p.area)
+
+        # The large piece loses its staircase; the small one keeps what it has,
+        # because there is no smoother outline underneath it in the data.
+        assert len(pieces[0].exterior.coords) < 20
+        assert len(pieces[1].exterior.coords) == len(small.exterior.coords)
+
+    def test_the_display_tolerance_wins_on_a_large_shelf(self) -> None:
+        # Ross is 991 km across, so half a pixel is already twice a cell.
+        assert display_tolerance(991_000.0, 991_000.0) == pytest.approx(991.0)
+
+    def test_the_floor_wins_on_a_small_one(self) -> None:
+        # Larsen B is 63.5 km across, where half a pixel is only 64 m.
+        assert display_tolerance(63_500.0, 63_500.0) == pytest.approx(500.0)

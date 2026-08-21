@@ -1,10 +1,12 @@
-/* Deliberately spare for now. The palette is the one the game will keep:
-   ice against deep water, which is also legible for the shelf outlines. */
+/* Ice against deep water: the palette the outlines are drawn in, and the one
+   the whole page keeps. */
 :root {
   --ocean: #0b1d2a;
+  --ocean-raised: #12293a;
   --ice: #eaf4f8;
   --ice-dim: #9fb8c4;
   --shelf: #cfe6f0;
+  --hit: #7fd4a0;
 
   color-scheme: dark;
   font-family:
@@ -24,29 +26,35 @@ body {
 }
 
 #app {
-  width: min(40rem, 100% - 2rem);
-  padding: 2rem 0 4rem;
+  width: min(34rem, 100% - 2rem);
+  padding: 1.5rem 0 3rem;
+}
+
+header {
   text-align: center;
 }
 
 h1 {
   margin: 0;
-  font-size: 2.5rem;
+  font-size: 2.25rem;
   letter-spacing: 0.08em;
 }
 
 .tagline {
-  margin: 0.25rem 0 2rem;
+  margin: 0.25rem 0 1.5rem;
   color: var(--ice-dim);
+  font-size: 0.95rem;
 }
 
 .shelf {
-  margin: 0;
+  margin: 0 0 1.25rem;
   aspect-ratio: 1 / 1;
   display: grid;
   place-items: center;
-  border: 1px solid var(--ice-dim);
-  border-radius: 0.5rem;
+  border: 1px solid #24435a;
+  border-radius: 0.75rem;
+  background: var(--ocean-raised);
+  position: relative;
 }
 
 .shelf svg {
@@ -55,8 +63,143 @@ h1 {
   fill: var(--shelf);
 }
 
-.shelf figcaption,
+.shelf figcaption {
+  position: absolute;
+  bottom: 0.6rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--ice);
+}
+
+#guess-form {
+  position: relative;
+}
+
+#guess-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.7rem 0.9rem;
+  font: inherit;
+  color: var(--ice);
+  background: var(--ocean-raised);
+  border: 1px solid #24435a;
+  border-radius: 0.5rem;
+}
+
+#guess-input:focus {
+  outline: 2px solid var(--shelf);
+  outline-offset: 1px;
+}
+
+#guess-input:disabled {
+  opacity: 0.5;
+}
+
+#suggestions {
+  list-style: none;
+  margin: 0.3rem 0 0;
+  padding: 0;
+  position: absolute;
+  z-index: 1;
+  width: 100%;
+  background: var(--ocean-raised);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 0.5rem 1.5rem #0006;
+}
+
+#suggestions:empty {
+  display: none;
+}
+
+#suggestions button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.55rem 0.9rem;
+  font: inherit;
+  color: var(--ice);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+#suggestions button:hover,
+#suggestions button:focus {
+  background: #1d3d52;
+}
+
+.remaining,
 .status {
   color: var(--ice-dim);
   font-size: 0.9rem;
+  margin: 0.75rem 0 0;
+  text-align: center;
+}
+
+.status {
+  color: var(--ice);
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.guesses {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.guess {
+  display: grid;
+  /* Name takes the slack; the three readings keep fixed columns so the eye
+     can compare one guess against the last without re-finding them. */
+  grid-template-columns: 1fr 5.5rem 2rem 3.5rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  background: var(--ocean-raised);
+  border-radius: 0.5rem;
+}
+
+.guess.correct {
+  background: #14453099;
+  color: var(--hit);
+}
+
+.guess-distance,
+.guess-proximity {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--ice-dim);
+}
+
+.guess.correct .guess-distance,
+.guess.correct .guess-proximity {
+  color: var(--hit);
+}
+
+.guess-arrow {
+  text-align: center;
+}
+
+footer {
+  margin-top: 2.5rem;
+  color: #6d8593;
+  font-size: 0.75rem;
+  text-align: center;
+  line-height: 1.5;
+}
+
+footer a {
+  color: #86a3b2;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
 }

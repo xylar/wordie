@@ -34,6 +34,37 @@ from wordie.shelves import Shelf
 #: see rather than losing detail somebody can.
 DEFAULT_SIMPLIFY_FRACTION = 0.001
 
+#: BedMachine's cell size, which is the floor on how far a vertex may move.
+#:
+#: An outline traced from a raster runs along cell edges, so it carries a
+#: staircase that is quantisation rather than coastline -- no ice front is
+#: stepped at 500 m. Removing it takes a tolerance of a whole cell, not the
+#: half-cell the staircase deviates from its own chord: Douglas-Peucker keeps
+#: the furthest point of any run it cannot discard whole, so at half a cell
+#: every other step survives. Measured on Larsen B at the size the game draws
+#: it, half a cell leaves the grid plainly visible, a whole cell removes it for
+#: 0.25% of the area, and beyond that the coastline starts turning into facets.
+#:
+#: This matters more than it sounds. The display tolerance only exceeds it on
+#: shelves wider than 250 km, and 36 of the 52 shelves in the everyday answer
+#: pool are narrower than that -- so without a floor most of the game is drawn
+#: with the grid showing through.
+DEFAULT_SOURCE_CELL_M = 500.0
+
+#: The floor never takes more than this fraction of a *piece's* own extent.
+#:
+#: Of the piece, not of the shelf, and Wordie is why. Its five fragments are
+#: strung over 63 km but the smallest is 3 km across, so a floor capped
+#: against the shelf's extent would apply a whole 500 m cell to a fragment six
+#: cells wide and swallow it: capping against the shelf cost Wordie 3% of its
+#: area, against the piece it costs 0.1%.
+#:
+#: Below a few cells across, the quantisation and the shape are the same
+#: thing. Flattening such a piece does not reveal a smoother outline
+#: underneath, because the data does not contain one -- so it is left alone,
+#: stair-steps and all, as the most honest thing available.
+MAX_FLOOR_FRACTION = 0.02
+
 #: Drop an interior ring whose area is below this fraction of the shelf's
 #: bounding box. A hole smaller than a pixel cannot be seen but still costs
 #: coordinates; ice rises worth recognising are orders of magnitude larger.
@@ -146,27 +177,58 @@ def _prune_holes(
     return Polygon(polygon.exterior, kept), len(kept), cut
 
 
+def display_tolerance(
+    shelf_extent: float,
+    piece_extent: float,
+    fraction: float = DEFAULT_SIMPLIFY_FRACTION,
+    source_cell_m: float = DEFAULT_SOURCE_CELL_M,
+) -> float:
+    """How far a vertex of one piece of a shelf may move.
+
+    Two terms, and the larger wins. One is what the display can resolve, taken
+    against the whole shelf because the whole shelf is scaled into the box
+    together. The other is what the source raster can assert -- below a cell
+    there is no coastline left to keep, only the staircase of the grid -- and
+    that one is capped against the piece, which may be very much smaller than
+    the shelf it belongs to.
+    """
+    return max(
+        fraction * shelf_extent,
+        min(source_cell_m, MAX_FLOOR_FRACTION * piece_extent),
+    )
+
+
 def simplify_for_display(
     geometry: BaseGeometry,
     fraction: float = DEFAULT_SIMPLIFY_FRACTION,
     min_hole_fraction: float = DEFAULT_MIN_HOLE_FRACTION,
+    source_cell_m: float = DEFAULT_SOURCE_CELL_M,
 ) -> tuple[BaseGeometry, int, int]:
-    """Simplify a shelf relative to its own size.
+    """Simplify a shelf relative to its own size and to the source grid.
 
     `preserve_topology` keeps the result a valid polygon: without it
     Douglas-Peucker will happily fold a narrow inlet across itself, and a
     self-intersecting ring renders as a shape the data never contained.
     """
-    extent = _longest_side(geometry)
-    simplified = geometry.simplify(fraction * extent, preserve_topology=True)
-    min_hole_area = min_hole_fraction * extent * extent
+    shelf_extent = _longest_side(geometry)
+    min_hole_area = min_hole_fraction * shelf_extent * shelf_extent
 
     polygons, holes, dropped = [], 0, 0
-    for polygon in _polygons(simplified):
-        pruned, kept, cut = _prune_holes(polygon, min_hole_area)
+    # Piece by piece, because the floor depends on how big the piece is.
+    for piece in _polygons(geometry):
+        tolerance = display_tolerance(
+            shelf_extent, _longest_side(piece), fraction, source_cell_m
+        )
+        simplified = piece.simplify(tolerance, preserve_topology=True)
+        if simplified.is_empty or not isinstance(simplified, Polygon):
+            continue
+        pruned, kept, cut = _prune_holes(simplified, min_hole_area)
         polygons.append(pruned)
         holes += kept
         dropped += cut
+
+    if not polygons:
+        raise ValueError('nothing survived simplification')
 
     result: BaseGeometry = (
         MultiPolygon(polygons) if len(polygons) > 1 else polygons[0]
@@ -189,6 +251,7 @@ def build_payload(
     shelves: list[Shelf],
     fraction: float = DEFAULT_SIMPLIFY_FRACTION,
     min_hole_fraction: float = DEFAULT_MIN_HOLE_FRACTION,
+    source_cell_m: float = DEFAULT_SOURCE_CELL_M,
 ) -> tuple[dict[str, Any], PayloadStats]:
     """Build the FeatureCollection the game loads."""
     features = []
@@ -197,7 +260,7 @@ def build_payload(
 
     for shelf in shelves:
         geometry, kept, cut = simplify_for_display(
-            shelf.geometry, fraction, min_hole_fraction
+            shelf.geometry, fraction, min_hole_fraction, source_cell_m
         )
         rings = _rings(geometry)
         vertices += sum(len(ring) for polygon in rings for ring in polygon)

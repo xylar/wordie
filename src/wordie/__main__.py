@@ -405,6 +405,9 @@ def _run_shelves(args: argparse.Namespace) -> int:
         named,
         fraction=args.simplify_fraction,
         min_hole_fraction=args.min_hole_fraction,
+        # Taken from the file rather than assumed, so a future BedMachine at
+        # a different resolution needs no change here.
+        source_cell_m=abs(transform.a),
     )
     args.payload.parent.mkdir(parents=True, exist_ok=True)
     # Separators without spaces: this file is read by a browser, not a person.
