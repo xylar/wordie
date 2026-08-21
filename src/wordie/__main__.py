@@ -8,6 +8,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from wordie.bedmachine import read_floating_mask
+from wordie.boundaries import read_named_shelves
 from wordie.outlines import DEFAULT_MIN_AREA_KM2, polygonize_floating_ice
 from wordie.projections import to_geographic
 
@@ -60,6 +61,31 @@ def _build_parser() -> argparse.ArgumentParser:
         type=int,
         default=20,
         help='how many outlines to summarise (default: %(default)s)',
+    )
+    names = subparsers.add_parser(
+        'names',
+        help='list the named ice shelves in the MEaSUREs boundaries',
+    )
+    names.add_argument(
+        '--boundaries',
+        type=Path,
+        required=True,
+        help=(
+            'path to IceBoundaries_Antarctica_v02.shp. Its .dbf, .shx and '
+            '.prj must sit beside it; the names live in the .dbf. Download '
+            'from https://nsidc.org/data/nsidc-0709 with an Earthdata Login.'
+        ),
+    )
+    names.add_argument(
+        '--min-area-km2',
+        type=float,
+        default=0.0,
+        help='omit shelves smaller than this (default: %(default)s)',
+    )
+    names.add_argument(
+        '--fragmented-only',
+        action='store_true',
+        help='list only shelves reassembled from more than one polygon',
     )
     return parser
 
@@ -114,10 +140,35 @@ def _run_outlines(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_names(args: argparse.Namespace) -> int:
+    shelves = read_named_shelves(
+        args.boundaries, min_area_km2=args.min_area_km2
+    )
+    if args.fragmented_only:
+        shelves = [shelf for shelf in shelves if shelf.was_fragmented]
+
+    print(f'{len(shelves)} named shelves\n')
+    print(f'{"display name":<26} {"dataset key":<24} {"area km2":>10}  parts')
+    print('-' * 78)
+    for shelf in shelves:
+        parts = (
+            ' <- ' + ', '.join(shelf.source_names)
+            if shelf.was_fragmented
+            else ''
+        )
+        print(
+            f'{shelf.display:<26} {shelf.canonical:<24} '
+            f'{shelf.area_km2:>10,.0f}{parts}'
+        )
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     if args.command == 'outlines':
         return _run_outlines(args)
+    if args.command == 'names':
+        return _run_names(args)
     raise AssertionError(f'unhandled command {args.command!r}')
 
 

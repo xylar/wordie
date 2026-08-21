@@ -24,10 +24,17 @@ env/
 web/node_modules/
 web/dist/
 
-# Source datasets are large (BedMachine v4 is several GB) and are fetched on
-# demand rather than committed. Only the small derived outlines under
-# web/public/data/ are tracked.
+# Source datasets are large and are not redistributable: BedMachine v4 is 1.2
+# GB and both it and the MEaSUREs boundaries sit behind an Earthdata Login.
+# They get downloaded by hand, often straight into this directory, so the
+# patterns below are deliberately broad -- committing one by accident would be
+# a nuisance to undo and worse to publish. Only the small derived outlines
+# under web/public/data/ are tracked.
 data/cache/
+*.nc
+*.crdownload
+IceBoundaries_Antarctica_*
+NSIDC-*
 
 # Editors / OS
 .vscode/
