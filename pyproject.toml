@@ -1,0 +1,52 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "wordie"
+version = "0.1.0"
+description = "Pipeline deriving Antarctic ice shelf outlines for the wordie game"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [{ name = "Xylar Asay-Davis" }]
+# Deliberately empty: every runtime dependency is a conda package, declared in
+# pixi.toml. Repeating them here would be a second list to keep in step, and
+# pip cannot install the ones that matter -- rasterio, and the GDAL underneath
+# it -- as reliably as conda-forge does.
+dependencies = []
+
+[project.scripts]
+wordie-data = "wordie.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/wordie"]
+
+[tool.ruff]
+line-length = 79
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "W"]
+
+[tool.ruff.format]
+quote-style = "single"
+
+[tool.mypy]
+files = ["src", "tests"]
+strict = true
+# No `python_version` pin. Setting one to the floor in `requires-python` made
+# mypy parse the installed numpy stubs as older Python than they are written
+# for, which failed on syntax rather than on anything in this project. Checking
+# against the interpreter actually in the environment is what the pin was
+# trying to approximate anyway.
+
+# rasterio and shapely ship partial or absent type information; without this
+# every import from them is an error under `strict`.
+[[tool.mypy.overrides]]
+module = ["rasterio.*", "shapely.*", "pyproj.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
