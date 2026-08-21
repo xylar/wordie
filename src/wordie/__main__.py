@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -12,6 +13,29 @@ from wordie.boundaries import NamedShelf, read_named_shelves
 from wordie.names import DISPLAY_OVERRIDES
 from wordie.outlines import DEFAULT_MIN_AREA_KM2, polygonize_floating_ice
 from wordie.projections import to_geographic
+
+#: Where the source datasets are kept. Neither is redistributable and both are
+#: large, so they live outside the repository -- by convention in a `data`
+#: directory beside the worktrees, which is where this points if
+#: `WORDIE_DATA_DIR` is unset. Giving the paths a default is what lets the
+#: commands in the README be copied and run rather than transcribed.
+DATA_DIR = Path(os.environ.get('WORDIE_DATA_DIR', '../data'))
+
+#: The file names NSIDC ships, unchanged.
+BEDMACHINE_FILE = 'NSIDC-0756_BedMachineAntarctica_19700101-20191001_V04.1.nc'
+BOUNDARIES_FILE = 'IceBoundaries_Antarctica_v02.shp'
+
+
+def _require(path: Path, flag: str, source: str) -> Path:
+    """Fail before any work starts, and say what to do about it."""
+    if path.exists():
+        return path
+    raise SystemExit(
+        f'no such file: {path}\n'
+        f'Download it from {source} with an Earthdata Login, then pass '
+        f'{flag} or point WORDIE_DATA_DIR at the directory holding it. '
+        f'It is not redistributed with this repository.'
+    )
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -30,12 +54,8 @@ def _build_parser() -> argparse.ArgumentParser:
     outlines.add_argument(
         '--bedmachine',
         type=Path,
-        required=True,
-        help=(
-            'path to a BedMachine Antarctica netCDF file. Download it from '
-            'https://nsidc.org/data/nsidc-0756 with an Earthdata Login; it '
-            'is not redistributed with this repository.'
-        ),
+        default=DATA_DIR / BEDMACHINE_FILE,
+        help='path to a BedMachine netCDF file (default: %(default)s)',
     )
     outlines.add_argument(
         '--output',
@@ -70,11 +90,11 @@ def _build_parser() -> argparse.ArgumentParser:
     names.add_argument(
         '--boundaries',
         type=Path,
-        required=True,
+        default=DATA_DIR / BOUNDARIES_FILE,
         help=(
-            'path to IceBoundaries_Antarctica_v02.shp. Its .dbf, .shx and '
-            '.prj must sit beside it; the names live in the .dbf. Download '
-            'from https://nsidc.org/data/nsidc-0709 with an Earthdata Login.'
+            'path to IceBoundaries_Antarctica_v02.shp; its .dbf, .shx and '
+            '.prj must sit beside it, and the names live in the .dbf '
+            '(default: %(default)s)'
         ),
     )
     names.add_argument(
@@ -101,7 +121,10 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def _run_outlines(args: argparse.Namespace) -> int:
-    mask, transform = read_floating_mask(args.bedmachine)
+    bedmachine = _require(
+        args.bedmachine, '--bedmachine', 'https://nsidc.org/data/nsidc-0756'
+    )
+    mask, transform = read_floating_mask(bedmachine)
     print(f'floating cells: {int(mask.sum()):,} of {mask.size:,} in the grid')
 
     outlines = polygonize_floating_ice(
@@ -200,9 +223,10 @@ def _print_markdown(shelves: list[NamedShelf]) -> None:
 
 
 def _run_names(args: argparse.Namespace) -> int:
-    shelves = read_named_shelves(
-        args.boundaries, min_area_km2=args.min_area_km2
+    boundaries = _require(
+        args.boundaries, '--boundaries', 'https://nsidc.org/data/nsidc-0709'
     )
+    shelves = read_named_shelves(boundaries, min_area_km2=args.min_area_km2)
     if args.fragmented_only:
         shelves = [shelf for shelf in shelves if shelf.was_fragmented]
 
