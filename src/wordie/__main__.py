@@ -126,8 +126,10 @@ def _build_parser() -> argparse.ArgumentParser:
     logo.add_argument(
         '--boundaries',
         type=Path,
-        required=True,
-        help='path to IceBoundaries_Antarctica_v02.shp',
+        default=DATA_DIR / BOUNDARIES_FILE,
+        help=(
+            'path to IceBoundaries_Antarctica_v02.shp (default: %(default)s)'
+        ),
     )
     logo.add_argument(
         '--output-dir',
@@ -277,7 +279,10 @@ def _run_names(args: argparse.Namespace) -> int:
 
 
 def _run_logo(args: argparse.Namespace) -> int:
-    shelves = read_named_shelves(args.boundaries)
+    boundaries = _require(
+        args.boundaries, '--boundaries', 'https://nsidc.org/data/nsidc-0709'
+    )
+    shelves = read_named_shelves(boundaries)
     matches = [shelf for shelf in shelves if shelf.canonical == args.shelf]
     if not matches:
         raise SystemExit(

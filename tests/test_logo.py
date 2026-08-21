@@ -25,6 +25,12 @@ def _paths(svg: str) -> list[str]:
     return re.findall(r'<path d="([^"]+)"', svg)
 
 
+def _attribute(svg: str, pattern: str) -> float:
+    match = re.search(pattern, svg)
+    assert match is not None, f'no match for {pattern}'
+    return float(match.group(1))
+
+
 def _viewbox(svg: str) -> tuple[float, float]:
     match = re.search(r'viewBox="0 0 ([\d.]+) ([\d.]+)"', svg)
     assert match is not None
@@ -208,8 +214,8 @@ class TestWordmark:
         width, _height = _viewbox(svg)
 
         left = min(x for x, _y in _coords(svg))
-        text_x = float(re.search(r'<text x="([\d.]+)"', svg).group(1))
-        text_length = float(re.search(r'textLength="([\d.]+)"', svg).group(1))
+        text_x = _attribute(svg, r'<text x="([\d.]+)"')
+        text_length = _attribute(svg, r'textLength="([\d.]+)"')
 
         assert width - (text_x + text_length) == pytest.approx(left, abs=0.05)
 
