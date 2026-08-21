@@ -66,6 +66,30 @@ takes paths to files you have already downloaded. Only the small derived
 outlines are tracked. Citing both datasets is a condition of using them, which
 is why the citations above are in the README rather than in a footnote.
 
+## Where the two datasets disagree
+
+They describe the same shelves eight years apart, so they do not agree exactly.
+98.4% of BedMachine's floating ice falls inside a named MEaSUREs polygon. What
+matters is the rest, and connectivity sorts it out without a threshold to
+argue over:
+
+- A connected body of floating ice **overlapping a named polygon is that
+  shelf**, leftover included. The front advanced or retreated between the two
+  datasets; cropping it would draw a front that neither dataset asserts. This
+  adopts 9,510 km².
+- A connected body **overlapping no named polygon** is an iceberg or a patch of
+  unnamed island ice, and is dropped — the game cannot ask about a shape with
+  no name. This discards 873 bodies totalling 6,744 km², none larger than
+  1,000 km².
+
+The same intersection does the other necessary job. BedMachine has Filchner and
+Ronne as a single connected body of 444,000 km², because they are; only the
+MEaSUREs polygons say where the line between them runs.
+
+One shelf does not survive the crossing. `Paternostro`, 6.5 km² in MEaSUREs,
+has nothing floating in BedMachine at all, so the game has 164 shelves rather
+than 165.
+
 ## How a guess is scored
 
 Distance is the true geodesic distance between shelf centroids on WGS 84, in km.
@@ -81,7 +105,8 @@ bearing matches the mental map the player is working from.
 
 | Path | What lives there |
 | --- | --- |
-| `src/wordie/` | The pipeline: BedMachine's mask in, ice shelf outlines out |
+| `src/wordie/` | The pipeline: BedMachine's mask in, named ice shelves out |
+| `docs/shelf-names.md` | Every name the game can use, and how it was arrived at |
 | `tests/` | Tests for the pipeline, over synthetic rasters |
 | `web/` | The game itself: Vite + TypeScript, no framework |
 | `web/src/scoring.ts` | Distance and bearing between two shelves |
@@ -112,14 +137,17 @@ arguments from the root of a worktree. `WORDIE_DATA_DIR` overrides it, and
 `--bedmachine` and `--boundaries` override that.
 
 ```bash
-pixi run wordie-data outlines --output outlines.geojson  # trace the mask
-pixi run wordie-data names                               # list the shelves
+pixi run wordie-data shelves --output shelves.geojson    # the whole pipeline
+pixi run wordie-data outlines --output outlines.geojson  # just trace the mask
+pixi run wordie-data names                               # just list the names
 pixi run wordie-data names --format markdown             # docs/shelf-names.md
 pixi run wordie-data logo                                # redraw the logo
 ```
 
-Tracing the mask takes a few seconds. Intersecting the outlines against the
-named shelves is the next stage and is not written yet.
+`shelves` is the one that matters: it traces the mask, attaches the names, and
+cuts the bodies that more than one shelf claims. It takes about ten seconds and
+yields 164 named shelves. Simplifying them into something a browser should
+download is the next stage and is not written yet.
 
 ## Developing
 

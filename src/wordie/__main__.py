@@ -14,6 +14,7 @@ from wordie.logo import write_logo_set
 from wordie.names import DISPLAY_OVERRIDES
 from wordie.outlines import DEFAULT_MIN_AREA_KM2, polygonize_floating_ice
 from wordie.projections import to_geographic
+from wordie.shelves import name_outlines
 
 #: Where the source datasets are kept. Neither is redistributable and both are
 #: large, so they live outside the repository -- by convention in a `data`
@@ -117,6 +118,34 @@ def _build_parser() -> argparse.ArgumentParser:
             'markdown emits the full mapping as a table for review '
             '(default: %(default)s)'
         ),
+    )
+
+    shelves = subparsers.add_parser(
+        'shelves',
+        help='trace, name and split the ice shelves the game will use',
+    )
+    shelves.add_argument(
+        '--bedmachine',
+        type=Path,
+        default=DATA_DIR / BEDMACHINE_FILE,
+        help='path to a BedMachine netCDF file (default: %(default)s)',
+    )
+    shelves.add_argument(
+        '--boundaries',
+        type=Path,
+        default=DATA_DIR / BOUNDARIES_FILE,
+        help='path to the MEaSUREs boundaries (default: %(default)s)',
+    )
+    shelves.add_argument(
+        '--output',
+        type=Path,
+        help='write the named shelves here as GeoJSON in lon/lat',
+    )
+    shelves.add_argument(
+        '--top',
+        type=int,
+        default=20,
+        help='how many shelves to summarise (default: %(default)s)',
     )
 
     logo = subparsers.add_parser(
@@ -278,6 +307,70 @@ def _run_names(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_shelves(args: argparse.Namespace) -> int:
+    bedmachine = _require(
+        args.bedmachine, '--bedmachine', 'https://nsidc.org/data/nsidc-0756'
+    )
+    boundaries = _require(
+        args.boundaries, '--boundaries', 'https://nsidc.org/data/nsidc-0709'
+    )
+
+    mask, transform = read_floating_mask(bedmachine)
+    outlines = polygonize_floating_ice(mask, transform)
+    available = read_named_shelves(boundaries)
+    named, report = name_outlines(outlines, available)
+
+    print(
+        f'{len(outlines):,} bodies of floating ice, '
+        f'{len(available)} named shelves available'
+    )
+    print(
+        f'  named    {report.named_count:5} shelves, '
+        f'{report.named_area_km2:11,.0f} km2'
+    )
+    print(f'  split    {report.split_count:5} bodies claimed by more than one')
+    print(
+        f'  adopted  {report.adopted_area_km2:11,.0f} km2 outside every '
+        'named polygon but inside a named body'
+    )
+    print(
+        f'  dropped  {report.dropped_count:5} bodies, '
+        f'{report.dropped_area_km2:11,.0f} km2 claimed by nobody'
+    )
+
+    print(f'\nlargest {min(args.top, len(named))}:')
+    for shelf in named[: args.top]:
+        lon, lat = shelf.centroid
+        print(
+            f'  {shelf.display:<24} {shelf.area_km2:10,.0f} km2   '
+            f'{lat:7.2f} S {lon:8.2f} E'
+        )
+
+    if args.output is not None:
+        collection = {
+            'type': 'FeatureCollection',
+            'features': [
+                {
+                    'type': 'Feature',
+                    'properties': {
+                        'key': shelf.key,
+                        'name': shelf.display,
+                        'area_km2': round(shelf.area_km2, 3),
+                        'lon': round(shelf.centroid[0], 6),
+                        'lat': round(shelf.centroid[1], 6),
+                    },
+                    'geometry': to_geographic(
+                        shelf.geometry
+                    ).__geo_interface__,
+                }
+                for shelf in named
+            ],
+        }
+        args.output.write_text(json.dumps(collection))
+        print(f'\nwrote {args.output}')
+    return 0
+
+
 def _run_logo(args: argparse.Namespace) -> int:
     boundaries = _require(
         args.boundaries, '--boundaries', 'https://nsidc.org/data/nsidc-0709'
@@ -308,6 +401,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _run_outlines(args)
     if args.command == 'names':
         return _run_names(args)
+    if args.command == 'shelves':
+        return _run_shelves(args)
     if args.command == 'logo':
         return _run_logo(args)
     raise AssertionError(f'unhandled command {args.command!r}')
