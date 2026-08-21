@@ -36,8 +36,10 @@ the shapes modern without hand-maintaining a name list.
 
 Both are NASA MEaSUREs products distributed by NSIDC and require a free
 [Earthdata Login](https://urs.earthdata.nasa.gov/) to download. Neither source
-file is committed here — the pipeline fetches them on demand, and only the
-small derived outlines are tracked.
+file is committed here, and neither is fetched automatically: the pipeline
+takes paths to files you have already downloaded. Only the small derived
+outlines are tracked. Citing both datasets is a condition of using them, which
+is why the citations above are in the README rather than in a footnote.
 
 ## How a guess is scored
 
@@ -54,29 +56,50 @@ bearing matches the mental map the player is working from.
 
 | Path | What lives there |
 | --- | --- |
+| `src/wordie/` | The pipeline: BedMachine's mask in, ice shelf outlines out |
+| `tests/` | Tests for the pipeline, over synthetic rasters |
 | `web/` | The game itself: Vite + TypeScript, no framework |
 | `web/src/scoring.ts` | Distance and bearing between two shelves |
 | `web/public/data/` | Derived outlines, committed, served as static assets |
 
-The pipeline that derives the outlines is not written yet; it will arrive as
-`src/wordie/`, with its own pixi environment.
+## Running the pipeline
+
+Download the two source files first — both need an Earthdata Login, and
+neither is redistributed here:
+
+1. [BedMachine Antarctica v4](https://nsidc.org/data/nsidc-0756/versions/4) —
+   `NSIDC-0756_BedMachineAntarctica_19700101-20191001_V04.1.nc`
+2. [Antarctic Boundaries v2](https://nsidc.org/data/nsidc-0709/versions/2) —
+   the shapefile bundle containing `IceBoundaries_Antarctica_v02.shp`
+
+Then trace the floating-ice mask into outlines:
+
+```bash
+pixi run wordie-data outlines \
+    --bedmachine /path/to/BedMachineAntarctica.nc \
+    --output outlines.geojson
+```
+
+It takes a few seconds. Attaching names to those outlines is the next stage
+and is not written yet.
 
 ## Developing
 
 The toolchain is managed by [pixi](https://pixi.sh), which supplies Node as
-well, so a checkout needs pixi and nothing else.
+well as Python, so a checkout needs pixi and nothing else.
 
 ```bash
-pixi install      # the environment
-pixi run install  # npm ci, inside web/
-pixi run dev      # serve the game at localhost:5173
+pixi install          # the environment
+pixi run web-install  # npm ci, inside web/
+pixi run dev          # serve the game at localhost:5173
 ```
 
-The checks, which are the same ones CI runs:
+The checks, which are the same ones CI runs. Each verb covers both halves of
+the project — `test` runs pytest and vitest, `typecheck` runs mypy and tsc:
 
 ```bash
-pixi run check    # prettier, tsc, vitest and a production build
-pixi run fmt      # fix formatting rather than report it
+pixi run check        # lint, format, typecheck, test, and a production build
+pixi run fmt          # fix formatting rather than report it
 ```
 
 Development happens in git worktrees alongside `main`, one per branch, and

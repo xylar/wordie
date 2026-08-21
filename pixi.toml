@@ -2,34 +2,89 @@
 name = "wordie"
 channels = ["conda-forge"]
 # No win-64. Nothing that ships is OS-specific -- the artifact is a static
-# site built on Linux -- and the pipeline that is coming leans on the GDAL
-# stack, which is where Windows support would actually cost something.
+# site built on Linux -- and the pipeline leans on the GDAL stack, which is
+# where Windows support would actually cost something.
 platforms = ["linux-64", "osx-64", "osx-arm64"]
 
-# Node lives in pixi so that a checkout needs pixi and nothing else. The web app
-# keeps its own package.json and lockfile under web/ -- pixi supplies the
-# runtime, npm resolves the JavaScript.
-#
-# There is no Python here yet. It arrives with the pipeline that derives the
-# ice shelf outlines from BedMachine, as its own feature and environment; the
-# two share no dependency, so keeping them disjoint means a Node upgrade cannot
-# perturb the Python solve.
+# The pipeline that derives ice shelf outlines from BedMachine.
+[feature.pipeline.dependencies]
+python = ">=3.11"
+# Reading BedMachine: a single netCDF-4 file, 13333 x 13333 at 500 m, so the
+# pipeline reads the `mask` field alone rather than loading the whole thing.
+netcdf4 = ">=1.6"
+numpy = ">=1.26"
+xarray = ">=2024.1"
+# Turning the floating-ice mask into polygons. rasterio.features.shapes walks
+# the raster and returns the exact pixel-edge boundary of each connected
+# region, which beats a marching-squares contour here: the mask is
+# categorical, so an interpolated 2.5-contour would invent geometry between
+# cell centres that the data never claimed.
+rasterio = ">=1.3"
+# rasterio pulls affine in regardless, but the pipeline imports Affine by name
+# to build the transform from BedMachine's coordinates, so it is declared.
+affine = ">=2.4"
+shapely = ">=2.0"
+pyproj = ">=3.6"
+
+# Node, so that a checkout needs pixi and nothing else. The web app keeps its
+# own package.json and lockfile under web/ -- pixi supplies the runtime, npm
+# resolves the JavaScript.
 [feature.web.dependencies]
 nodejs = ">=20"
 
+[feature.dev.dependencies]
+hatchling = "*"
+mypy = "*"
+pip = "*"
+pytest = "*"
+pytest-cov = "*"
+ruff = "*"
+
+# Installed editable so that `import wordie` and the `wordie-data` console
+# script both work anywhere in the environment. CI has no use for either -- it
+# runs pytest, which reaches src/ through `pythonpath` -- so this is its own
+# feature that the `ci` environment leaves out.
+[feature.editable.pypi-dependencies]
+wordie = { path = ".", editable = true }
+
 [environments]
-default = ["web"]
+# Both halves live in one environment rather than two. PR #1 kept them apart
+# on the principle that a Node upgrade should not perturb the GDAL solve, but
+# with both halves in daily use the isolation bought less than the `-e web` on
+# every command cost. One environment, and the task names below carry the
+# distinction instead.
+default = ["pipeline", "web", "dev", "editable"]
+ci = ["pipeline", "web", "dev"]
+
+# Task names are verbs, and each verb covers both halves of the project: `test`
+# runs pytest and vitest, `typecheck` runs mypy and tsc. The `py-` and `web-`
+# tasks exist to be composed and are worth running directly only when you want
+# to iterate on one half.
+[feature.pipeline.tasks]
+py-lint = "ruff check src tests"
+py-fmt = "ruff format src tests"
+py-fmt-check = "ruff format --check src tests"
+py-typecheck = "mypy"
+py-test = "pytest"
+py-cov = "pytest --cov=wordie --cov-report=term-missing"
 
 [feature.web.tasks]
 # `npm ci` rather than `npm install`: it installs exactly what the lockfile
 # pins and fails if package.json has drifted from it, which is what both CI and
 # a fresh worktree want.
-install = { cmd = "npm ci", cwd = "web" }
+web-install = { cmd = "npm ci", cwd = "web" }
+web-fmt = { cmd = "npm run fmt", cwd = "web" }
+web-fmt-check = { cmd = "npm run fmt-check", cwd = "web" }
+web-typecheck = { cmd = "npm run typecheck", cwd = "web" }
+web-test = { cmd = "npm run test", cwd = "web" }
 dev = { cmd = "npm run dev", cwd = "web" }
 build = { cmd = "npm run build", cwd = "web" }
 preview = { cmd = "npm run preview", cwd = "web" }
-fmt = { cmd = "npm run fmt", cwd = "web" }
-fmt-check = { cmd = "npm run fmt-check", cwd = "web" }
-typecheck = { cmd = "npm run typecheck", cwd = "web" }
-test = { cmd = "npm run test", cwd = "web" }
-check = { depends-on = ["fmt-check", "typecheck", "test", "build"] }
+
+[tasks]
+lint = { depends-on = ["py-lint"] }
+fmt = { depends-on = ["py-fmt", "web-fmt"] }
+fmt-check = { depends-on = ["py-fmt-check", "web-fmt-check"] }
+typecheck = { depends-on = ["py-typecheck", "web-typecheck"] }
+test = { depends-on = ["py-test", "web-test"] }
+check = { depends-on = ["lint", "fmt-check", "typecheck", "test", "build"] }

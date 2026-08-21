@@ -26,19 +26,27 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.9.1
         with:
+          environments: ci
           cache: true
 
+      # npm resolves the web app's own dependencies; pixi only supplies the
+      # Node that runs them.
       - name: Install web dependencies
-        run: pixi run install
+        run: pixi run -e ci web-install
+
+      # Each of these covers both halves of the project: `typecheck` runs mypy
+      # and tsc, `test` runs pytest and vitest.
+      - name: Lint
+        run: pixi run -e ci lint
 
       - name: Format
-        run: pixi run fmt-check
+        run: pixi run -e ci fmt-check
 
       - name: Type check
-        run: pixi run typecheck
+        run: pixi run -e ci typecheck
 
       - name: Test
-        run: pixi run test
+        run: pixi run -e ci test
 
   build:
     name: build
@@ -48,13 +56,14 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.9.1
         with:
+          environments: ci
           cache: true
 
       - name: Install web dependencies
-        run: pixi run install
+        run: pixi run -e ci web-install
 
       - name: Build
-        run: pixi run build
+        run: pixi run -e ci build
 
       # Uploaded on every run, not only on main, so a pull request that breaks
       # the site fails here rather than after it has merged.
