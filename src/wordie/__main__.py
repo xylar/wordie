@@ -152,7 +152,7 @@ def _build_parser() -> argparse.ArgumentParser:
     shelves.add_argument(
         '--payload',
         type=Path,
-        default=Path('web/public/data/shelves.geojson'),
+        default=Path('web/src/data/shelves.geojson'),
         help='where to write the file the game loads (default: %(default)s)',
     )
     shelves.add_argument(

@@ -236,9 +236,14 @@ class TestSourceGridFloor:
         assert against_piece < against_shelf
         assert against_piece <= MAX_FLOOR_FRACTION * piece_extent
 
-    def test_a_small_fragment_keeps_its_detail_beside_a_large_one(
+    def test_a_small_fragment_is_smoothed_less_than_a_large_one(
         self,
     ) -> None:
+        # Both get smoothed -- leaving small pieces untouched was worse than
+        # either extreme, because a shelf came out with a clean main body and
+        # a visibly pixelated fragment beside it. But the cap is against the
+        # piece, so the small one is moved less in absolute terms and keeps
+        # proportionally more of what it has.
         big = staircase(0.0, 1.0e6, cells=100, cell=500.0)
         small = staircase(2.0e5, 1.0e6, cells=6, cell=500.0)
         shelf = MultiPolygon([big, small])
@@ -246,10 +251,15 @@ class TestSourceGridFloor:
         simplified, _h, _c = simplify_for_display(shelf, source_cell_m=500.0)
         pieces = sorted(simplified.geoms, key=lambda p: -p.area)
 
-        # The large piece loses its staircase; the small one keeps what it has,
-        # because there is no smoother outline underneath it in the data.
+        kept_big = len(pieces[0].exterior.coords) / len(big.exterior.coords)
+        kept_small = len(pieces[1].exterior.coords) / len(
+            small.exterior.coords
+        )
+
         assert len(pieces[0].exterior.coords) < 20
-        assert len(pieces[1].exterior.coords) == len(small.exterior.coords)
+        assert kept_small > kept_big
+        # And it is still recognisably itself, not reduced to a triangle.
+        assert len(pieces[1].exterior.coords) >= 5
 
     def test_the_display_tolerance_wins_on_a_large_shelf(self) -> None:
         # Ross is 991 km across, so half a pixel is already twice a cell.
