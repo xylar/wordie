@@ -44,7 +44,7 @@ strict = true
 # rasterio and shapely ship partial or absent type information; without this
 # every import from them is an error under `strict`.
 [[tool.mypy.overrides]]
-module = ["rasterio.*", "shapely.*", "pyproj.*"]
+module = ["rasterio.*", "shapely.*", "pyproj.*", "geopandas.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

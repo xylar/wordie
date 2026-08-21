@@ -11,6 +11,31 @@ badly drawn Amery from across the room. So the outlines are not
 hand-traced — they are derived from the same datasets the community publishes
 with, and the pipeline that derives them lives in this repository.
 
+## The name
+
+Two readings, both intended.
+
+The first is the obvious one: this is a Wordle-shaped game, and it wants a
+Wordle-shaped name.
+
+The second is that there is a **Wordie Ice Shelf**. It lay in Marguerite Bay on
+the west coast of the Antarctic Peninsula, and it was named by the British
+Graham Land Expedition of 1934–37 for Sir James Wordie, the geologist who ran
+the scientific staff on Shackleton's *Endurance*.
+
+It is gone. Wordie disintegrated over a series of events from the 1960s
+onwards, the subject of Doake and Vaughan's 1991 paper [*Rapid disintegration
+of the Wordie Ice Shelf in response to atmospheric
+warming*](https://www.nature.com/articles/350328a0) — the first of the
+Peninsula collapses, before Larsen A, Larsen B and Wilkins. By 2004 satellite
+imagery showed the shelf had broken away entirely. The water it used to cover
+is now called Wordie Bay.
+
+In the dataset this game draws from, Wordie survives as five fragments
+totalling 285 km². It is in the answer list. Every shelf in this game is a
+shape someone measured, and at least one of them is a shape that no longer
+exists.
+
 ## Where the shapes come from
 
 Two datasets, doing two different jobs.
@@ -72,16 +97,29 @@ neither is redistributed here:
 2. [Antarctic Boundaries v2](https://nsidc.org/data/nsidc-0709/versions/2) —
    the shapefile bundle containing `IceBoundaries_Antarctica_v02.shp`
 
-Then trace the floating-ice mask into outlines:
+Put both beside the repository rather than inside it, in a `data` directory
+alongside the worktrees:
 
-```bash
-pixi run wordie-data outlines \
-    --bedmachine /path/to/BedMachineAntarctica.nc \
-    --output outlines.geojson
+```
+code/wordie/
+├── data/        <- the downloads live here, outside every worktree
+├── main/
+└── <branch>/    <- one worktree per branch
 ```
 
-It takes a few seconds. Attaching names to those outlines is the next stage
-and is not written yet.
+That is where the commands look by default, so they can be run with no
+arguments from the root of a worktree. `WORDIE_DATA_DIR` overrides it, and
+`--bedmachine` and `--boundaries` override that.
+
+```bash
+pixi run wordie-data outlines --output outlines.geojson  # trace the mask
+pixi run wordie-data names                               # list the shelves
+pixi run wordie-data names --format markdown             # docs/shelf-names.md
+pixi run wordie-data logo                                # redraw the logo
+```
+
+Tracing the mask takes a few seconds. Intersecting the outlines against the
+named shelves is the next stage and is not written yet.
 
 ## Developing
 
