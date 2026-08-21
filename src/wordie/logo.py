@@ -22,6 +22,8 @@ from pathlib import Path
 from shapely.geometry import MultiPolygon, Polygon
 from shapely.geometry.base import BaseGeometry
 
+from wordie.projections import extent_of
+
 #: The palette the game already uses, from web/src/style.css.
 OCEAN = '#0b1d2a'
 ICE = '#eaf4f8'
@@ -105,14 +107,8 @@ class _Frame:
 
 def _frame_for(geometry: BaseGeometry, style: LogoStyle) -> _Frame:
     """Fit a geometry inside the viewBox, centred, aspect preserved."""
-    min_x, min_y, max_x, max_y = geometry.bounds
-    width = max_x - min_x
-    height = max_y - min_y
-    # Written as a positive test rather than `<= 0`, because an empty
-    # geometry has bounds of NaN and every comparison against NaN is False --
-    # so the obvious guard lets it through and yields an SVG full of NaN.
-    if not (width > 0.0 and height > 0.0):
-        raise ValueError('geometry has no extent to draw')
+    min_x, min_y, _max_x, _max_y = geometry.bounds
+    width, height = extent_of(geometry)
 
     usable = style.size * (1.0 - 2.0 * style.padding)
     scale = usable / max(width, height)

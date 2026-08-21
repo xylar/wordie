@@ -35,6 +35,24 @@ _TO_GEOGRAPHIC = Transformer.from_crs(MAP_CRS, GEOGRAPHIC_CRS, always_xy=True)
 _TO_EQUAL_AREA = Transformer.from_crs(MAP_CRS, AREA_CRS, always_xy=True)
 
 
+def extent_of(geometry: BaseGeometry) -> tuple[float, float]:
+    """Width and height of a map-plane geometry, in metres.
+
+    Raises if there is nothing to measure. The guard is written as a positive
+    test rather than `<= 0`, because an empty geometry has bounds of NaN and
+    every comparison against NaN is False -- so the obvious form lets it
+    through and the caller goes on to divide by it. This lives here, used by
+    both the logo and the payload, because writing it twice is how it came to
+    be written wrongly the second time.
+    """
+    min_x, min_y, max_x, max_y = geometry.bounds
+    width = max_x - min_x
+    height = max_y - min_y
+    if not (width > 0.0 and height > 0.0):
+        raise ValueError('geometry has no extent')
+    return width, height
+
+
 def to_geographic(geometry: BaseGeometry) -> BaseGeometry:
     """Reproject a map-plane geometry to longitude and latitude."""
     return transform_geometry(_TO_GEOGRAPHIC.transform, geometry)
