@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: check (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      # The checks themselves are OS-independent, but the pixi lockfile is
+      # not: running both is what keeps the solve honest for whichever machine
+      # a contributor turns up on.
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: prefix-dev/setup-pixi@v0.9.1
+        with:
+          cache: true
+
+      - name: Install web dependencies
+        run: pixi run install
+
+      - name: Format
+        run: pixi run fmt-check
+
+      - name: Type check
+        run: pixi run typecheck
+
+      - name: Test
+        run: pixi run test
+
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: prefix-dev/setup-pixi@v0.9.1
+        with:
+          cache: true
+
+      - name: Install web dependencies
+        run: pixi run install
+
+      - name: Build
+        run: pixi run build
+
+      # Uploaded on every run, not only on main, so a pull request that breaks
+      # the site fails here rather than after it has merged.
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist
+
+  # The game is published from the artifact the job above built, so what is
+  # served is what CI checked rather than a second build of its own.
+  deploy:
+    name: deploy
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

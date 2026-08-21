@@ -1,0 +1,5 @@
+# Normalise line endings to LF in the repository and in the working copy on
+# every platform. Without this git hands Windows a CRLF checkout and
+# `prettier --check` fails there on files that are correct everywhere else,
+# which is exactly what happened the first time CI ran.
+* text=auto eol=lf
