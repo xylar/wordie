@@ -1,6 +1,7 @@
 import './style.css';
 import { createGame, matchingShelves, submitGuess, type Game } from './game';
-import { shelfForDate } from './daily';
+import { puzzleNumber, shelfForDate } from './daily';
+import { forgetOldGames, loadGame, saveGame } from './storage';
 import { answerPool } from './pool';
 import { loadShelves, type ShelfFeature } from './shelves';
 import {
@@ -19,18 +20,36 @@ const start = async (): Promise<void> => {
   if (!elements) return;
 
   const shelves = await loadShelves();
-  const answer = shelfForDate(answerPool(shelves), new Date());
+  const today = new Date();
+  const answer = shelfForDate(answerPool(shelves), today);
   if (!answer) {
     showError(elements, 'No ice shelves to play with.');
     return;
   }
 
+  const puzzle = puzzleNumber(today);
+  const byKey = new Map(shelves.map((shelf) => [shelf.properties.key, shelf]));
+
   let game: Game = createGame(answer);
   drawOutline(elements, answer);
+
+  // Replay what was saved rather than restoring the state it produced, so a
+  // game resumed after a change to the scoring comes back scored the new way.
+  const saved = loadGame(puzzle, answer.properties.key);
+  for (const key of saved?.guesses ?? []) {
+    const shelf = byKey.get(key);
+    if (shelf) game = submitGuess(game, shelf);
+  }
+  renderGuesses(elements, game);
   renderStatus(elements, game);
+  forgetOldGames(puzzle);
 
   const play = (shelf: ShelfFeature): void => {
     game = submitGuess(game, shelf);
+    saveGame(puzzle, {
+      answer: answer.properties.key,
+      guesses: game.guesses.map((guess) => guess.key),
+    });
     elements.input.value = '';
     clearSuggestions(elements);
     renderGuesses(elements, game);
