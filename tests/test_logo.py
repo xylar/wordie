@@ -25,6 +25,12 @@ def _paths(svg: str) -> list[str]:
     return re.findall(r'<path d="([^"]+)"', svg)
 
 
+def _viewbox(svg: str) -> tuple[float, float]:
+    match = re.search(r'viewBox="0 0 ([\d.]+) ([\d.]+)"', svg)
+    assert match is not None
+    return float(match.group(1)), float(match.group(2))
+
+
 def _coords(svg: str) -> list[tuple[float, float]]:
     return [
         (float(x), float(y))
@@ -189,7 +195,39 @@ class TestWordmark:
 
     def test_is_wider_than_it_is_tall(self) -> None:
         svg = render_wordmark(SCATTERED, LogoStyle(size=100.0))
-        assert 'viewBox="0 0 400 100"' in svg
+        width, height = _viewbox(svg)
+        assert width > height
+
+    def test_right_margin_matches_the_left(self) -> None:
+        # The canvas used to be a fixed four times the mark, which left
+        # whatever the name did not use as a slab of dead space on the right.
+        # It is now laid out from where the ink falls, and this pins that:
+        # the space allowed after the name equals the space before the mark.
+        style = LogoStyle(size=256.0)
+        svg = render_wordmark(SCATTERED, style)
+        width, _height = _viewbox(svg)
+
+        left = min(x for x, _y in _coords(svg))
+        text_x = float(re.search(r'<text x="([\d.]+)"', svg).group(1))
+        text_length = float(re.search(r'textLength="([\d.]+)"', svg).group(1))
+
+        assert width - (text_x + text_length) == pytest.approx(left, abs=0.05)
+
+    def test_the_canvas_follows_the_length_of_the_name(self) -> None:
+        narrow = render_wordmark(SCATTERED, LogoStyle(text_width_em=2.0))
+        wide = render_wordmark(SCATTERED, LogoStyle(text_width_em=6.0))
+        assert _viewbox(wide)[0] > _viewbox(narrow)[0]
+
+    def test_pins_the_text_width_so_a_wider_font_cannot_overflow(
+        self,
+    ) -> None:
+        # The canvas is sized from `text_width_em`, so the name has to be held
+        # to it whatever font the viewer resolves.
+        svg = render_wordmark(SCATTERED)
+        assert 'textLength=' in svg
+        # `spacing` is the default and is what we want -- a font that differs
+        # gets re-tracked rather than having its letterforms stretched.
+        assert 'lengthAdjust=' not in svg
 
     def test_the_name_can_be_changed(self) -> None:
         assert '>ice<' in render_wordmark(SCATTERED, text='ice')

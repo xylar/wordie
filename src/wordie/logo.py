@@ -57,6 +57,26 @@ class LogoStyle:
     #: Coordinate precision. Two decimals on a 256 unit box is well under a
     #: pixel at any size the mark is used, and keeps the file small.
     precision: int = 2
+    #: Wordmark: gap between the mark and the name, as a fraction of the side.
+    wordmark_gap: float = 0.20
+    #: Wordmark: type size, as a fraction of the side.
+    wordmark_font_scale: float = 0.42
+    #: Wordmark: width of the name in ems, used to size the canvas so that the
+    #: right margin matches the left.
+    #:
+    #: SVG cannot measure text before it is rendered and the result depends on
+    #: whichever font the viewer resolves from the stack, so this is measured
+    #: once -- 'wordie' set at weight 600 in the stack below -- and then held
+    #: to with `textLength`. Holding to it is the point: the canvas is sized
+    #: from this number, so a viewer whose font is wider must not be allowed
+    #: to overflow it.
+    #:
+    #: This is an advance width, which runs a few units past the last glyph's
+    #: ink by that glyph's right side bearing. The drawn right margin is
+    #: therefore a shade wider than the left -- about 5 units in 674 on the
+    #: reference font. Chasing that out would mean a second font-specific
+    #: constant to measure and maintain for a difference nobody can see.
+    text_width_em: float = 3.408
     title: str = 'wordie'
     description: str = (
         'The five surviving fragments of the Wordie Ice Shelf, '
@@ -202,34 +222,52 @@ def render_wordmark(
     """
     style = style or LogoStyle()
     mark_size = style.size
-    width = mark_size * 4.0
     polygons = _selected_polygons(geometry, style)
-    frame = _frame_for(_extent_of(polygons), style)
+    extent = _extent_of(polygons)
+    frame = _frame_for(extent, style)
     path = ' '.join(
         _polygon_path(polygon, frame, style.precision) for polygon in polygons
     )
 
+    # Lay the canvas out from where the ink actually falls rather than from a
+    # fixed multiple of the mark. Wordie's fragments do not fill their square
+    # -- the shape is taller than it is wide, so framing it leaves slack at
+    # both sides -- and a fixed canvas turns whatever the name does not use
+    # into a slab of dead space on the right.
+    min_x, min_y, max_x, max_y = extent.bounds
+    ink_left, _lower = frame.project(min_x, min_y)
+    ink_right, _upper = frame.project(max_x, max_y)
+
+    font_size = mark_size * style.wordmark_font_scale
+    text_width = font_size * style.text_width_em
+    text_x = ink_right + mark_size * style.wordmark_gap
+    # The same clear space on the right as the mark leaves on the left.
+    width = text_x + text_width + ink_left
+
     baseline = mark_size * 0.63
-    font_size = mark_size * 0.42
     lines = [
         '<svg xmlns="http://www.w3.org/2000/svg" '
-        f'viewBox="0 0 {width:g} {mark_size:g}" '
-        f'width="{width:g}" height="{mark_size:g}" '
+        f'viewBox="0 0 {width:.{style.precision}f} {mark_size:g}" '
+        f'width="{width:.{style.precision}f}" height="{mark_size:g}" '
         'role="img" aria-labelledby="logo-title logo-desc">',
         f'  <title id="logo-title">{style.title}</title>',
         f'  <desc id="logo-desc">{style.description}</desc>',
     ]
     if style.background is not None:
         lines.append(
-            f'  <rect width="{width:g}" height="{mark_size:g}" '
-            f'fill="{style.background}"/>'
+            f'  <rect width="{width:.{style.precision}f}" '
+            f'height="{mark_size:g}" fill="{style.background}"/>'
         )
     lines += [
         f'  <path d="{path}" fill="{style.fill}"/>',
-        f'  <text x="{mark_size * 1.08:g}" y="{baseline:g}" '
+        f'  <text x="{text_x:.{style.precision}f}" y="{baseline:g}" '
         f'font-family="system-ui, -apple-system, Segoe UI, sans-serif" '
         f'font-size="{font_size:g}" font-weight="600" '
-        f'letter-spacing="{font_size * 0.06:g}" '
+        # textLength pins the name to the width the canvas was sized for.
+        # lengthAdjust stays at its default of `spacing`, so a font that
+        # differs from the measured one is re-tracked rather than having its
+        # letterforms stretched.
+        f'textLength="{text_width:.{style.precision}f}" '
         f'fill="{style.fill}">{text}</text>',
         '</svg>',
     ]
