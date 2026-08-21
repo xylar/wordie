@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# Testing / typing / linting caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Environments
+.pixi/
+.venv/
+venv/
+env/
+
+# Web build output and dependencies
+web/node_modules/
+web/dist/
+
+# Source datasets are large (BedMachine v4 is several GB) and are fetched on
+# demand rather than committed. Only the small derived outlines under
+# web/public/data/ are tracked.
+data/cache/
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>wordie — guess the Antarctic ice shelf</title>
+    <meta
+      name="description"
+      content="Guess the Antarctic ice shelf from its outline."
+    />
+  </head>
+  <body>
+    <main id="app">
+      <h1>wordie</h1>
+      <p class="tagline">Guess the Antarctic ice shelf from its outline.</p>
+
+      <!-- The outline is drawn into this panel once the pipeline that derives
+           it from BedMachine has landed. Fixed aspect ratio so that the shape
+           never stretches: scale is withheld from the player, distortion is
+           not. -->
+      <figure class="shelf" aria-label="Ice shelf outline">
+        <svg viewBox="0 0 100 100" role="img" aria-hidden="true"></svg>
+        <figcaption>Outlines are still being built.</figcaption>
+      </figure>
+
+      <p class="status" id="status"></p>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
