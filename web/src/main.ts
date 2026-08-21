@@ -4,6 +4,7 @@ import { puzzleNumber, shelfForDate } from './daily';
 import { forgetOldGames, loadGame, saveGame } from './storage';
 import { answerPool } from './pool';
 import { loadShelves, type ShelfFeature } from './shelves';
+import { copyToClipboard, shareText } from './share';
 import {
   clearSuggestions,
   drawOutline,
@@ -11,6 +12,7 @@ import {
   renderGuesses,
   renderStatus,
   renderSuggestions,
+  reportCopy,
   showError,
 } from './ui';
 
@@ -67,6 +69,18 @@ const start = async (): Promise<void> => {
   };
 
   elements.input.addEventListener('input', suggest);
+
+  elements.share.addEventListener('click', () => {
+    const text = shareText(game, {
+      puzzle,
+      // Wherever this copy of the game is served from, so a pasted result
+      // links back to the game rather than to a guess about where it lives.
+      url: new URL(import.meta.env.BASE_URL, window.location.href).href,
+    });
+    void copyToClipboard(text).then((copied) => {
+      reportCopy(elements, copied);
+    });
+  });
 
   const form = document.querySelector<HTMLFormElement>('#guess-form');
   form?.addEventListener('submit', (event) => {

@@ -17,6 +17,7 @@ export interface Elements {
   remaining: HTMLElement;
   guesses: HTMLOListElement;
   status: HTMLElement;
+  share: HTMLButtonElement;
 }
 
 export const findElements = (): Elements | null => {
@@ -27,6 +28,7 @@ export const findElements = (): Elements | null => {
   const remaining = document.querySelector<HTMLElement>('#remaining');
   const guesses = document.querySelector<HTMLOListElement>('#guesses');
   const status = document.querySelector<HTMLElement>('#status');
+  const share = document.querySelector<HTMLButtonElement>('#share');
   if (
     !outline ||
     !reveal ||
@@ -34,11 +36,21 @@ export const findElements = (): Elements | null => {
     !suggestions ||
     !remaining ||
     !guesses ||
-    !status
+    !status ||
+    !share
   ) {
     return null;
   }
-  return { outline, reveal, input, suggestions, remaining, guesses, status };
+  return {
+    outline,
+    reveal,
+    input,
+    suggestions,
+    remaining,
+    guesses,
+    status,
+    share,
+  };
 };
 
 export const drawOutline = (elements: Elements, shelf: ShelfFeature): void => {
@@ -102,6 +114,7 @@ export const renderStatus = (elements: Elements, game: Game): void => {
   elements.reveal.textContent = answer;
   elements.input.disabled = true;
   elements.suggestions.replaceChildren();
+  elements.share.hidden = false;
   elements.status.textContent =
     game.status === 'won'
       ? `${answer}, in ${game.guesses.length} ${
@@ -126,6 +139,24 @@ export const renderSuggestions = (
       return item;
     }),
   );
+};
+
+/**
+ * Say what the share button did.
+ *
+ * The label goes back after a moment rather than staying changed, so a second
+ * copy is still obviously a button and not a completed thing.
+ */
+export const reportCopy = (
+  elements: Elements,
+  copied: boolean,
+  restoreAfterMs = 1800,
+): void => {
+  const original = 'Copy result';
+  elements.share.textContent = copied ? 'Copied' : 'Press Ctrl+C';
+  window.setTimeout(() => {
+    elements.share.textContent = original;
+  }, restoreAfterMs);
 };
 
 export const clearSuggestions = (elements: Elements): void => {
