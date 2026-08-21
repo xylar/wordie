@@ -112,7 +112,16 @@ worth making if it can tell you where you are.
 
 The puzzle is the same for everyone on a given UTC day — the players this is
 for are spread across every longitude by profession — and every shelf in the
-pool comes up once before any comes up twice.
+pool comes up once before any comes up twice. A game in progress survives a
+reload; a finished one can be copied as a grid of squares that says how it went
+without saying what the answer was.
+
+**Practice** deals a shelf at random instead, as often as you like, and is the
+only place the difficulty setting applies: it draws from all 164 named shelves
+rather than the everyday 52. Hard mode deliberately does not touch the daily
+round. If it changed which shelf the day got, two people comparing results
+would be comparing different puzzles, and the shared grid would quietly stop
+meaning anything.
 
 ## How a guess is scored
 

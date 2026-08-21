@@ -1,13 +1,16 @@
 import './style.css';
 import { createGame, matchingShelves, submitGuess, type Game } from './game';
-import { puzzleNumber, shelfForDate } from './daily';
+import { puzzleNumber } from './daily';
+import { dailyRound, practiceRound, type Mode, type Round } from './rounds';
+import type { Difficulty } from './pool';
 import { forgetOldGames, loadGame, saveGame } from './storage';
-import { answerPool } from './pool';
 import { loadCollection, type ShelfFeature } from './shelves';
 import { renderAbout } from './about';
 import { copyToClipboard, shareText } from './share';
 import {
   clearSuggestions,
+  renderMode,
+  resetRound,
   drawOutline,
   findElements,
   renderGuesses,
@@ -53,64 +56,98 @@ const start = async (): Promise<void> => {
   showAbout(collection.sources, collection.note);
 
   const today = new Date();
-  const answer = shelfForDate(answerPool(shelves), today);
-  if (!answer) {
-    showError(elements, 'No ice shelves to play with.');
-    return;
-  }
-
   const puzzle = puzzleNumber(today);
   const byKey = new Map(shelves.map((shelf) => [shelf.properties.key, shelf]));
 
-  let game: Game = createGame(answer);
-  drawOutline(elements, answer);
+  let mode: Mode = 'daily';
+  let difficulty: Difficulty = 'major';
+  let round: Round | null = null;
+  let game: Game | null = null;
 
-  // Replay what was saved rather than restoring the state it produced, so a
-  // game resumed after a change to the scoring comes back scored the new way.
-  const saved = loadGame(puzzle, answer.properties.key);
-  for (const key of saved?.guesses ?? []) {
-    const shelf = byKey.get(key);
-    if (shelf) game = submitGuess(game, shelf);
-  }
-  renderGuesses(elements, game);
-  renderStatus(elements, game);
-  forgetOldGames(puzzle);
-
-  const play = (shelf: ShelfFeature): void => {
-    game = submitGuess(game, shelf);
+  const persist = (): void => {
+    if (!round?.persist || !game) return;
     saveGame(puzzle, {
-      answer: answer.properties.key,
+      answer: round.answer.properties.key,
       guesses: game.guesses.map((guess) => guess.key),
     });
-    elements.input.value = '';
-    clearSuggestions(elements);
+  };
+
+  const redraw = (): void => {
+    if (!elements || !game) return;
     renderGuesses(elements, game);
     renderStatus(elements, game);
+  };
+
+  const begin = (next: Round): void => {
+    if (!elements) return;
+    round = next;
+    game = createGame(next.answer);
+
+    // Only a daily round has anything to restore; a practice round starts
+    // fresh by definition. Replaying the saved guesses rather than restoring
+    // the state they produced means a game resumed after a change to the
+    // scoring comes back scored the new way.
+    if (next.persist) {
+      const saved = loadGame(puzzle, next.answer.properties.key);
+      for (const key of saved?.guesses ?? []) {
+        const shelf = byKey.get(key);
+        if (shelf) game = submitGuess(game, shelf);
+      }
+    }
+
+    resetRound(elements);
+    drawOutline(elements, next.answer);
+    redraw();
+  };
+
+  const play = (shelf: ShelfFeature): void => {
+    if (!elements || !game) return;
+    game = submitGuess(game, shelf);
+    persist();
+    elements.input.value = '';
+    clearSuggestions(elements);
+    redraw();
     if (game.status === 'playing') elements.input.focus();
   };
 
   const suggest = (): ShelfFeature[] => {
-    // Guessing is open across all 164 shelves even though the answer comes
-    // from the everyday pool: a wrong guess is only worth making if it can
-    // tell you where you are.
+    if (!elements) return [];
+    // Guessing is open across all 164 shelves whatever the answer was drawn
+    // from: a wrong guess is only worth making if it can tell you where you
+    // are.
     const matches = matchingShelves(shelves, elements.input.value);
     renderSuggestions(elements, matches, play);
     return matches;
   };
 
-  elements.input.addEventListener('input', suggest);
+  const startDaily = (): void => {
+    const next = dailyRound(shelves, today);
+    if (!next) {
+      showError(elements!, 'No ice shelves to play with.');
+      return;
+    }
+    mode = 'daily';
+    begin(next);
+    renderMode(elements!, mode, difficulty);
+  };
 
-  elements.share.addEventListener('click', () => {
-    const text = shareText(game, {
-      puzzle,
-      // Wherever this copy of the game is served from, so a pasted result
-      // links back to the game rather than to a guess about where it lives.
-      url: new URL(import.meta.env.BASE_URL, window.location.href).href,
-    });
-    void copyToClipboard(text).then((copied) => {
-      reportCopy(elements, copied);
-    });
-  });
+  const startPractice = (): void => {
+    const next = practiceRound(
+      shelves,
+      difficulty,
+      Math.random,
+      round?.answer.properties.key,
+    );
+    if (!next) {
+      showError(elements!, 'No ice shelves to play with.');
+      return;
+    }
+    mode = 'practice';
+    begin(next);
+    renderMode(elements!, mode, difficulty);
+  };
+
+  elements.input.addEventListener('input', suggest);
 
   const form = document.querySelector<HTMLFormElement>('#guess-form');
   form?.addEventListener('submit', (event) => {
@@ -121,6 +158,31 @@ const start = async (): Promise<void> => {
     if (first) play(first);
   });
 
+  elements.share.addEventListener('click', () => {
+    if (!game) return;
+    const text = shareText(game, {
+      puzzle,
+      // Wherever this copy of the game is served from, so a pasted result
+      // links back to the game rather than to a guess about where it lives.
+      url: new URL(import.meta.env.BASE_URL, window.location.href).href,
+    });
+    void copyToClipboard(text).then((copied) => {
+      reportCopy(elements!, copied);
+    });
+  });
+
+  elements.daily.addEventListener('click', startDaily);
+  elements.practice.addEventListener('click', startPractice);
+  elements.hard.addEventListener('change', () => {
+    difficulty = elements!.hard.checked ? 'all' : 'major';
+    // Changing the pool mid-round would leave the shelf on screen belonging
+    // to a set the player is no longer playing, so it deals a new one.
+    if (mode === 'practice') startPractice();
+    else renderMode(elements!, mode, difficulty);
+  });
+
+  startDaily();
+  forgetOldGames(puzzle);
   elements.input.focus();
 };
 
