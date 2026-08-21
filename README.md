@@ -171,10 +171,29 @@ pixi run fmt          # fix formatting rather than report it
 Development happens in git worktrees alongside `main`, one per branch, and
 reaches `main` only through a pull request. See `CLAUDE.md`.
 
-## License
+## License and citation
 
-BSD 3-Clause. See `LICENSE`.
+The code is BSD 3-Clause. See `LICENSE`.
 
-The datasets above are separate works with their own terms; the citations in
-this README are a condition of using them and should travel with anything
-derived from them.
+The datasets are separate works. Both are NASA MEaSUREs products distributed by
+the NSIDC DAAC, and both state the same condition of use: **cite them**. NASA
+claims no copyright in its Earth science data — "no copyright is claimed in the
+United States under Title 17, U.S. Code to any U.S. Government created work" —
+and its
+[open data policy](https://www.earthdata.nasa.gov/engage/open-data-services-software-policies)
+commits to full and open sharing with no restriction on redistribution or on
+preparing derivative works. NSIDC's own
+[use policy](https://nsidc.org/about/data-use-and-copyright) asks for citation
+and imposes no redistribution terms on data. The Earthdata Login that guards
+the downloads is an access mechanism, not a licence condition.
+
+So the derived outlines in `web/public/data/` are redistributable, and this
+repository does three things to keep that honest:
+
+- **Neither source file is committed or fetched automatically.** They are
+  downloaded by hand and kept outside the repository.
+- **The citations travel inside the derived file**, not only in this README,
+  because that file is served on its own and saved by whoever wants it.
+- **The derived file says it is derived.** The outlines are simplified
+  per shelf, so they are not at a uniform resolution and are not suitable for
+  measurement. Cite the sources, not this game.

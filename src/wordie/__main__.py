@@ -13,6 +13,11 @@ from wordie.boundaries import NamedShelf, read_named_shelves
 from wordie.logo import write_logo_set
 from wordie.names import DISPLAY_OVERRIDES
 from wordie.outlines import DEFAULT_MIN_AREA_KM2, polygonize_floating_ice
+from wordie.payload import (
+    DEFAULT_MIN_HOLE_FRACTION,
+    DEFAULT_SIMPLIFY_FRACTION,
+    build_payload,
+)
 from wordie.projections import to_geographic
 from wordie.shelves import name_outlines
 
@@ -139,7 +144,34 @@ def _build_parser() -> argparse.ArgumentParser:
     shelves.add_argument(
         '--output',
         type=Path,
-        help='write the named shelves here as GeoJSON in lon/lat',
+        help=(
+            'also write the full-resolution shelves here as ordinary '
+            'GeoJSON in longitude and latitude, for use outside the game'
+        ),
+    )
+    shelves.add_argument(
+        '--payload',
+        type=Path,
+        default=Path('web/public/data/shelves.geojson'),
+        help='where to write the file the game loads (default: %(default)s)',
+    )
+    shelves.add_argument(
+        '--simplify-fraction',
+        type=float,
+        default=DEFAULT_SIMPLIFY_FRACTION,
+        help=(
+            "simplification tolerance as a fraction of each shelf's own "
+            'extent (default: %(default)s)'
+        ),
+    )
+    shelves.add_argument(
+        '--min-hole-fraction',
+        type=float,
+        default=DEFAULT_MIN_HOLE_FRACTION,
+        help=(
+            "drop ice rises smaller than this fraction of the shelf's "
+            'bounding box (default: %(default)s)'
+        ),
     )
     shelves.add_argument(
         '--top',
@@ -368,6 +400,23 @@ def _run_shelves(args: argparse.Namespace) -> int:
         }
         args.output.write_text(json.dumps(collection))
         print(f'\nwrote {args.output}')
+
+    payload, stats = build_payload(
+        named,
+        fraction=args.simplify_fraction,
+        min_hole_fraction=args.min_hole_fraction,
+    )
+    args.payload.parent.mkdir(parents=True, exist_ok=True)
+    # Separators without spaces: this file is read by a browser, not a person.
+    args.payload.write_text(json.dumps(payload, separators=(',', ':')))
+    size_kb = args.payload.stat().st_size / 1024.0
+    print(
+        f'\nwrote {args.payload} -- {size_kb:,.0f} KB, '
+        f'{stats.vertex_count:,} vertices, '
+        f'{stats.hole_count:,} ice rises kept '
+        f'({stats.dropped_hole_count:,} too small to see dropped), '
+        f'worst area change {100 * stats.max_area_change:.3f}%'
+    )
     return 0
 
 
