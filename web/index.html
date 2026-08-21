@@ -67,17 +67,38 @@
 
       <footer>
         <p>
-          Outlines from
-          <a href="https://nsidc.org/data/nsidc-0756"
-            >BedMachine Antarctica v4</a
-          >
-          and
-          <a href="https://nsidc.org/data/nsidc-0709"
-            >MEaSUREs Antarctic Boundaries v2</a
-          >. Distances are geodesic; arrows point as a polar stereographic map
-          does.
+          Distances are geodesic; arrows point as a polar stereographic map
+          does. <button id="about-open" type="button">About the data</button>
         </p>
       </footer>
+
+      <dialog id="about">
+        <h2>About wordie</h2>
+        <p>
+          Six guesses at an Antarctic ice shelf, shown by its outline with the
+          scale withheld. A wrong guess reports the geodesic distance to the
+          answer and an arrow pointing the way a polar stereographic map does —
+          not the way the great circle sets off, which near the pole can be the
+          opposite direction.
+        </p>
+        <p>
+          The shapes are not drawn by hand. They are traced from the
+          floating-ice mask of BedMachine Antarctica and named by intersection
+          with the MEaSUREs boundaries, by a pipeline in the
+          <a href="https://github.com/xylar/wordie" rel="noreferrer"
+            >repository</a
+          >.
+        </p>
+        <p>
+          The game is named for the Wordie Ice Shelf, which disintegrated from
+          the 1960s and was gone by 2004. It is in the answer list.
+        </p>
+        <h3>Data sources</h3>
+        <div id="about-sources"></div>
+        <form method="dialog">
+          <button id="about-close" type="submit">Close</button>
+        </form>
+      </dialog>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>

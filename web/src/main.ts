@@ -3,7 +3,8 @@ import { createGame, matchingShelves, submitGuess, type Game } from './game';
 import { puzzleNumber, shelfForDate } from './daily';
 import { forgetOldGames, loadGame, saveGame } from './storage';
 import { answerPool } from './pool';
-import { loadShelves, type ShelfFeature } from './shelves';
+import { loadCollection, type ShelfFeature } from './shelves';
+import { renderAbout } from './about';
 import { copyToClipboard, shareText } from './share';
 import {
   clearSuggestions,
@@ -18,10 +19,39 @@ import {
 
 const elements = findElements();
 
+/**
+ * Wire the about panel.
+ *
+ * Done as soon as the outlines arrive rather than on first open, so the
+ * citations are in the page whether or not anybody presses the button.
+ */
+const showAbout = (
+  sources: Parameters<typeof renderAbout>[1],
+  note: string,
+): void => {
+  const dialog = document.querySelector<HTMLDialogElement>('#about');
+  const open = document.querySelector<HTMLButtonElement>('#about-open');
+  const container = document.querySelector<HTMLElement>('#about-sources');
+  if (!dialog || !open || !container) return;
+
+  renderAbout(container, sources, note);
+  open.addEventListener('click', () => {
+    dialog.showModal();
+  });
+  // Clicking the backdrop closes it. The dialog's own box is a child, so a
+  // click landing on the element itself landed outside the content.
+  dialog.addEventListener('click', (event) => {
+    if (event.target === dialog) dialog.close();
+  });
+};
+
 const start = async (): Promise<void> => {
   if (!elements) return;
 
-  const shelves = await loadShelves();
+  const collection = await loadCollection();
+  const shelves = collection.features;
+  showAbout(collection.sources, collection.note);
+
   const today = new Date();
   const answer = shelfForDate(answerPool(shelves), today);
   if (!answer) {
