@@ -1,4 +1,4 @@
-# wordie
+<img src="web/src/assets/banner.svg" alt="wordie" width="339" />
 
 A browser game in the spirit of [worldl](https://worldl.io/country), but for
 Antarctic ice shelves. You are shown the outline of one ice shelf — its shape,
@@ -35,6 +35,10 @@ In the dataset this game draws from, Wordie survives as five fragments
 totalling 285 km². It is in the answer list. Every shelf in this game is a
 shape someone measured, and at least one of them is a shape that no longer
 exists.
+
+The mark above is those five fragments, at the scale and orientation the data
+gives them. `pixi run wordie-data logo` redraws it from the same file the
+answers come from, so it cannot drift away from them.
 
 ## Where the shapes come from
 
@@ -123,8 +127,12 @@ bearing matches the mental map the player is working from.
 
 ## What the browser downloads
 
-`web/public/data/shelves.geojson` holds all 164 outlines: 577 kB, and about
-90 kB over the wire once the server compresses it. Two things make it that
+`web/src/data/shelves.geojson` holds all 164 outlines: 540 kB, and about
+85 kB over the wire once the server compresses it. It is imported rather than
+served from `public/`, so the build gives it a content hash — under a fixed
+name a returning player keeps whatever their browser cached, which is how a
+round of outline fixes once reached the deployed site and not the people
+looking at it. Two things make it that
 small, and both follow from the same fact — every shelf is drawn alone and
 scaled to fill the same box, so on screen Ross and Rydberg Peninsula are the
 same size.
@@ -138,13 +146,31 @@ Underneath sits a floor of one BedMachine cell, because an outline traced from
 a raster runs along cell edges and carries a staircase that is quantisation
 rather than coastline: no ice front is stepped at 500 m. The display tolerance
 only exceeds a cell on shelves wider than 250 km, and 36 of the 52 shelves in
-the answer pool are narrower than that, so without the floor most of the game
-is drawn with the grid showing through. The floor is capped against each
-*piece* rather than each shelf — Wordie's five fragments span 63 km but the
-smallest is 3 km across, and a whole cell would swallow it.
+the answer pool are narrower, so without the floor most of the game is drawn
+with the grid showing through. The floor never moves a vertex more than 5% of
+its own *piece's* extent — Wordie's five fragments span 63 km but the smallest
+is 3 km across, and a cap taken against the shelf would apply a whole cell to a
+fragment six cells wide.
 
-Together these leave 30,770 vertices of the original 123,633, and move no
+Together these leave 28,711 vertices of the original 123,633, and move no
 well-known shelf's area by more than half a percent.
+
+## Why the outlines are drawn as curves
+
+Decimating the staircase leaves a polygon whose corners are the shelf's own
+rather than the grid's, but they are still corners, and a coastline drawn as
+straight cuts between them reads as a cutting rather than a coast.
+
+So the renderer draws each ring as quadratic curves: every stored vertex is a
+control point and every edge midpoint an on-curve point. That is precisely the
+limit a Chaikin corner-cut converges to, which means the smoothing costs
+nothing — no extra vertices in the file, no extra work in the pipeline, and the
+stored geometry stays a decimated version of the data rather than a smoothed
+artefact of it.
+
+Doing the same smoothing in the pipeline was the obvious alternative and is
+worse on both counts: it tripled the file, and it lost up to 12% of the area of
+the smallest shelves, where corner-cutting eats a shape only four cells wide.
 
 The geometry is written in **EPSG:3031 metres rather than degrees**. RFC 7946
 asks for WGS 84 and allows another system by prior arrangement, which this is:
@@ -166,7 +192,8 @@ because that is what scoring a guess needs.
 | `web/` | The game itself: Vite + TypeScript, no framework |
 | `web/src/scoring.ts` | Distance and bearing between two shelves |
 | `web/src/game.ts` | The rules, with no reference to the page they are drawn on |
-| `web/public/data/` | Derived outlines, committed, served as static assets |
+| `web/src/data/` | Derived outlines, committed, hashed into the build |
+| `web/src/assets/` | The logo, drawn from the Wordie outline by the pipeline |
 
 ## Running the pipeline
 
@@ -243,7 +270,7 @@ preparing derivative works. NSIDC's own
 and imposes no redistribution terms on data. The Earthdata Login that guards
 the downloads is an access mechanism, not a licence condition.
 
-So the derived outlines in `web/public/data/` are redistributable, and this
+So the derived outlines in `web/src/data/` are redistributable, and this
 repository does three things to keep that honest:
 
 - **Neither source file is committed or fetched automatically.** They are

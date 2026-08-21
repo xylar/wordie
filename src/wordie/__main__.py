@@ -152,7 +152,7 @@ def _build_parser() -> argparse.ArgumentParser:
     shelves.add_argument(
         '--payload',
         type=Path,
-        default=Path('web/public/data/shelves.geojson'),
+        default=Path('web/src/data/shelves.geojson'),
         help='where to write the file the game loads (default: %(default)s)',
     )
     shelves.add_argument(
@@ -195,7 +195,7 @@ def _build_parser() -> argparse.ArgumentParser:
     logo.add_argument(
         '--output-dir',
         type=Path,
-        default=Path('web/public'),
+        default=Path('web/src/assets'),
         help='where to write the SVGs (default: %(default)s)',
     )
     logo.add_argument(

@@ -51,19 +51,24 @@ DEFAULT_SIMPLIFY_FRACTION = 0.001
 #: with the grid showing through.
 DEFAULT_SOURCE_CELL_M = 500.0
 
-#: The floor never takes more than this fraction of a *piece's* own extent.
+#: The floor never moves a vertex more than this fraction of its own piece's
+#: extent.
 #:
-#: Of the piece, not of the shelf, and Wordie is why. Its five fragments are
-#: strung over 63 km but the smallest is 3 km across, so a floor capped
-#: against the shelf's extent would apply a whole 500 m cell to a fragment six
-#: cells wide and swallow it: capping against the shelf cost Wordie 3% of its
-#: area, against the piece it costs 0.1%.
+#: Of the piece, not of the shelf, and Wordie is why: its five fragments are
+#: strung over 63 km but the smallest is 3 km across, and a cap taken against
+#: the shelf applies a whole 500 m cell to a fragment six cells wide.
 #:
-#: Below a few cells across, the quantisation and the shape are the same
-#: thing. Flattening such a piece does not reveal a smoother outline
-#: underneath, because the data does not contain one -- so it is left alone,
-#: stair-steps and all, as the most honest thing available.
-MAX_FLOOR_FRACTION = 0.02
+#: Five percent rather than two, because two was not enough to clear the grid
+#: from the pieces where it shows most. Larsen B's second fragment is 21 cells
+#: across and needs 4.8% before its tolerance reaches a full cell; at 2% it
+#: kept every step while the main body beside it was smooth, which looked
+#: worse than either would alone.
+#:
+#: It costs something on the smallest shelves -- the worst is Telen, 18 km2, at
+#: 6.3% of its area -- and nothing overall, since what one piece loses at a
+#: convex corner another gains at a concave one: across all 164 shelves the
+#: total change is +0.006%. None of the affected shelves is in the answer pool.
+MAX_FLOOR_FRACTION = 0.05
 
 #: Drop an interior ring whose area is below this fraction of the shelf's
 #: bounding box. A hole smaller than a pixel cannot be seen but still costs

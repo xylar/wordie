@@ -60,7 +60,8 @@ than reporting it.
 | `tests/` | Tests for the pipeline |
 | `web/` | The game: Vite and TypeScript, no framework |
 | `web/src/` | Game source, including `scoring.ts` |
-| `web/public/data/` | Derived ice shelf outlines, committed, served as static assets |
+| `web/src/data/` | Derived ice shelf outlines, committed, hashed into the build |
+| `web/src/assets/` | The logo, drawn from the Wordie outline by the pipeline |
 | `.github/workflows/ci.yml` | Checks, and the deploy to GitHub Pages from `main` |
 
 Both halves share one pixi environment. They were kept apart at first on the

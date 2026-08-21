@@ -12,6 +12,9 @@
  * its orientation survive that, and both are kept exactly.
  */
 
+// eslint-disable-next-line -- Vite resolves this to a content-hashed URL.
+import shelvesUrl from './data/shelves.geojson?url';
+
 export interface ShelfProperties {
   /** Stable identifier, the dataset's own spelling: 'LarsenC'. */
   key: string;
@@ -52,11 +55,14 @@ export interface OutlineOptions {
   size: number;
   /** Clear space around the shape, as a fraction of the side. */
   padding: number;
+  /** Round the corners the raster left behind. */
+  smoothed: boolean;
 }
 
 export const DEFAULT_OUTLINE_OPTIONS: OutlineOptions = {
   size: 100,
   padding: 0.04,
+  smoothed: true,
 };
 
 const rings = (feature: ShelfFeature): number[][][] =>
@@ -93,11 +99,58 @@ export const boundsOf = (feature: ShelfFeature): Bounds => {
  * a lie about its outline, and the players this is for compare shapes for a
  * living. The shorter axis is centred in the slack instead.
  */
+const format = (point: [number, number]): string =>
+  `${point[0].toFixed(2)},${point[1].toFixed(2)}`;
+
+const midpoint = (
+  a: [number, number],
+  b: [number, number],
+): [number, number] => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+
+const straightRing = (points: [number, number][]): string =>
+  points.length > 0 ? `M${points.map(format).join('L')}Z` : '';
+
+/**
+ * A ring drawn as quadratic curves rather than straight segments.
+ *
+ * Each stored vertex becomes a control point and each edge midpoint an
+ * on-curve point, which is the limit a Chaikin corner-cut converges to -- so
+ * this is the same smoothing, done by the renderer for nothing rather than
+ * baked into the file at three times the size.
+ *
+ * It matters because the outlines are traced from a 500 m raster. The
+ * pipeline decimates the staircase away and leaves a polygon whose corners
+ * are the shelf's own; this rounds those corners, and the result reads as a
+ * coastline instead of a cutting.
+ */
+const quadraticRing = (points: [number, number][]): string => {
+  const ring =
+    points.length > 1 &&
+    points[0]?.[0] === points[points.length - 1]?.[0] &&
+    points[0]?.[1] === points[points.length - 1]?.[1]
+      ? points.slice(0, -1)
+      : points;
+
+  // Below a triangle there is no corner to round, and the curve would be
+  // degenerate; draw what little there is straight.
+  if (ring.length < 3) return straightRing(points);
+
+  const last = ring[ring.length - 1] as [number, number];
+  const first = ring[0] as [number, number];
+  const segments = [`M${format(midpoint(last, first))}`];
+  for (let i = 0; i < ring.length; i += 1) {
+    const control = ring[i] as [number, number];
+    const next = ring[(i + 1) % ring.length] as [number, number];
+    segments.push(`Q${format(control)} ${format(midpoint(control, next))}`);
+  }
+  return `${segments.join('')}Z`;
+};
+
 export const outlinePath = (
   feature: ShelfFeature,
   options: OutlineOptions = DEFAULT_OUTLINE_OPTIONS,
 ): string => {
-  const { size, padding } = options;
+  const { size, padding, smoothed } = options;
   const { minX, minY, maxX, maxY } = boundsOf(feature);
 
   const usable = size * (1 - 2 * padding);
@@ -107,7 +160,7 @@ export const outlinePath = (
 
   const parts: string[] = [];
   for (const ring of rings(feature)) {
-    const points: string[] = [];
+    const points: [number, number][] = [];
     for (const point of ring) {
       const x = point[0];
       const y = point[1];
@@ -115,22 +168,30 @@ export const outlinePath = (
       // SVG's y axis runs down the page and the map's runs north, so y is
       // flipped. Without it every shelf is drawn upside down, which on
       // outlines this irregular is not obvious until one sits beside a map.
-      const px = offsetX + (x - minX) * scale;
-      const py = size - (offsetY + (y - minY) * scale);
-      points.push(`${px.toFixed(2)},${py.toFixed(2)}`);
+      points.push([
+        offsetX + (x - minX) * scale,
+        size - (offsetY + (y - minY) * scale),
+      ]);
     }
-    if (points.length > 0) {
-      parts.push(`M${points.join('L')}Z`);
-    }
+    const path = smoothed ? quadraticRing(points) : straightRing(points);
+    if (path) parts.push(path);
   }
   return parts.join('');
 };
 
-/** Fetch the outlines, relative to wherever the game is deployed. */
+/**
+ * Fetch the outlines.
+ *
+ * The URL comes from importing the file rather than being written out, so the
+ * build gives it a content hash. Served from `public/` it had a fixed name,
+ * and a returning player kept whatever their browser had cached -- which is
+ * how a fortnight of outline fixes reached the deployed site and not the
+ * people looking at it.
+ */
 export const loadShelves = async (
-  baseUrl: string = import.meta.env.BASE_URL,
+  url: string = shelvesUrl,
 ): Promise<ShelfFeature[]> => {
-  const response = await fetch(`${baseUrl}data/shelves.geojson`);
+  const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`could not load the ice shelves: ${response.status}`);
   }

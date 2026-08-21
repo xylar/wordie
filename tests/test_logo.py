@@ -7,6 +7,8 @@ import pytest
 from shapely.geometry import MultiPolygon, Polygon, box
 
 from wordie.logo import (
+    OCEAN,
+    SHELF,
     LogoStyle,
     _frame_for,
     render_mark,
@@ -240,11 +242,16 @@ class TestWordmark:
 
 
 class TestWriteLogoSet:
-    def test_writes_the_three_files(self, tmp_path: Path) -> None:
+    def test_writes_the_whole_set(self, tmp_path: Path) -> None:
         result = write_logo_set(SCATTERED, tmp_path / 'assets')
 
         names = {path.name for path in result.written}
-        assert names == {'logo.svg', 'logo-wordmark.svg', 'favicon.svg'}
+        assert names == {
+            'logo.svg',
+            'logo-wordmark.svg',
+            'banner.svg',
+            'favicon.svg',
+        }
         for path in result.written:
             assert path.read_text().startswith('<svg')
 
@@ -264,3 +271,18 @@ class TestWriteLogoSet:
         target = tmp_path / 'deep' / 'nested'
         write_logo_set(SCATTERED, target)
         assert (target / 'logo.svg').exists()
+
+
+class TestBanner:
+    def test_the_banner_writes_its_colours_down(self, tmp_path: Path) -> None:
+        # An <img> does not pass `currentColor` into the file it loads, and
+        # GitHub renders a README against a background this repository does
+        # not choose -- where `currentColor` is black and the mark vanishes
+        # into a dark theme. So this one variant states both colours.
+        write_logo_set(SCATTERED, tmp_path)
+        banner = (tmp_path / 'banner.svg').read_text()
+
+        assert 'currentColor' not in banner
+        assert OCEAN in banner
+        assert SHELF in banner
+        assert '>wordie<' in banner
