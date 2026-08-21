@@ -38,13 +38,22 @@ DISPLAY_OVERRIDES: dict[str, str] = {
     'Zelee': 'Zélée',
     'Francais': 'Français',
     'Sorsdal': 'Sørsdal',
-    # Compound shelves, written as a list of the parts they join.
-    'Brunt_Stancomb': 'Brunt–Stancomb-Wills',
-    'WilmaRobertDowner': 'Wilma–Robert–Downer',
-    'Rayner_Thyer': 'Rayner–Thyer',
-    'Conger_Glenzer': 'Conger–Glenzer',
-    'Dawson_Lambton': 'Dawson–Lambton',
-    'Tracy_Tremenchus': 'Tracy–Tremenchus',
+    # Names the dataset gives in a shorter form than the one in common use.
+    # 'isen' is Norwegian for the ice shelf itself, so Fimbul and Nivl are the
+    # features and Fimbulisen and Nivlisen are what gets written.
+    'Fimbul': 'Fimbulisen',
+    'Nivl': 'Nivlisen',
+    # Named for Baudouin, King of the Belgians, and written in French.
+    'Baudouin': 'Roi Baudouin',
+    # Compound shelves, written as a list of the parts they join. Joined with
+    # a plain hyphen rather than an en dash, to match Riiser-Larsen, which
+    # arrives hyphenated from the dataset itself.
+    'Brunt_Stancomb': 'Brunt-Stancomb',
+    'WilmaRobertDowner': 'Wilma-Robert-Downer',
+    'Rayner_Thyer': 'Rayner-Thyer',
+    'Conger_Glenzer': 'Conger-Glenzer',
+    'Dawson_Lambton': 'Dawson-Lambton',
+    'Tracy_Tremenchus': 'Tracy-Tremenchus',
 }
 
 #: Insert a space between a lower-case letter and the upper-case letter that

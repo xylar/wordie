@@ -116,8 +116,8 @@ class TestDisplayName:
         assert display_name(canonical) == expected
 
     def test_overrides_win_over_the_mechanical_rules(self) -> None:
-        assert display_name('Brunt_Stancomb') == 'Brunt–Stancomb-Wills'
-        assert display_name('WilmaRobertDowner') == 'Wilma–Robert–Downer'
+        assert display_name('Brunt_Stancomb') == 'Brunt-Stancomb'
+        assert display_name('WilmaRobertDowner') == 'Wilma-Robert-Downer'
 
     def test_hyphenated_names_survive(self) -> None:
         assert display_name('Riiser-Larsen') == 'Riiser-Larsen'
