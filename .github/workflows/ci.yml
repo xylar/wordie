@@ -17,10 +17,10 @@ jobs:
     strategy:
       fail-fast: false
       # The checks themselves are OS-independent, but the pixi lockfile is
-      # not: running all three is what keeps the solve honest for whichever
-      # machine a contributor turns up on.
+      # not: running both is what keeps the solve honest for whichever machine
+      # a contributor turns up on.
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v5
 

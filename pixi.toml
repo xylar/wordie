@@ -1,7 +1,10 @@
 [workspace]
 name = "wordie"
 channels = ["conda-forge"]
-platforms = ["linux-64", "osx-64", "osx-arm64", "win-64"]
+# No win-64. Nothing that ships is OS-specific -- the artifact is a static
+# site built on Linux -- and the pipeline that is coming leans on the GDAL
+# stack, which is where Windows support would actually cost something.
+platforms = ["linux-64", "osx-64", "osx-arm64"]
 
 # Node lives in pixi so that a checkout needs pixi and nothing else. The web app
 # keeps its own package.json and lockfile under web/ -- pixi supplies the

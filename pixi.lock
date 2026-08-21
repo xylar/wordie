@@ -16,10 +16,6 @@ platforms:
   - __unix=0=0
   - __osx=13.0
   - __archspec=0=m1
-- name: win-64
-  virtual-packages:
-  - __win=10.0
-  - __archspec=0=x86_64
 environments:
   default:
     channels:
@@ -79,8 +75,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/nodejs-26.6.0-h00e74ec_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/openssl-3.6.3-hd24854e_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-hf451053_7.conda
-      win-64:
-      - conda: https://conda.anaconda.org/conda-forge/win-64/nodejs-26.6.0-h80d1838_0.conda
 packages:
 - conda: https://conda.anaconda.org/conda-forge/linux-64/_openmp_mutex-4.5-20_gnu.conda
   build_number: 20
@@ -775,13 +769,3 @@ packages:
     - zstd >=1.5.7,<1.6.0a0
   size: 433687
   timestamp: 1786599629846
-- conda: https://conda.anaconda.org/conda-forge/win-64/nodejs-26.6.0-h80d1838_0.conda
-  sha256: 8209fff36e34d2dc47ab37f879cb596059b3e6d58307fccefe7b9d79935492f3
-  md5: a375968cb2cf4a5b745c875b26d40b05
-  license: MIT
-  license_family: MIT
-  run_exports:
-    weak:
-    - nodejs >=26.6.0,<27.0a0
-  size: 34057372
-  timestamp: 1785852767251
