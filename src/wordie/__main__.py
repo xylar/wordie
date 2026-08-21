@@ -195,7 +195,7 @@ def _build_parser() -> argparse.ArgumentParser:
     logo.add_argument(
         '--output-dir',
         type=Path,
-        default=Path('web/public'),
+        default=Path('web/src/assets'),
         help='where to write the SVGs (default: %(default)s)',
     )
     logo.add_argument(

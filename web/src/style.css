@@ -36,8 +36,15 @@ header {
 
 h1 {
   margin: 0;
-  font-size: 2.25rem;
-  letter-spacing: 0.08em;
+}
+
+.wordmark {
+  /* The banner carries the ocean colour as its own background, which is the
+     page's, so it needs no seam hiding. Height rather than width, so the mark
+     keeps its size when the column narrows. */
+  height: 5rem;
+  width: auto;
+  max-width: 100%;
 }
 
 .tagline {

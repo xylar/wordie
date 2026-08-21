@@ -9,13 +9,24 @@
       content="Guess the Antarctic ice shelf from its outline."
     />
     <!-- Drawn from the Wordie Ice Shelf outline by `wordie-data logo`. Vite
-         rewrites the leading slash to the deploy base at build time. -->
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+         resolves this to a content-hashed asset at build time. -->
+    <link rel="icon" href="./src/assets/favicon.svg" type="image/svg+xml" />
   </head>
   <body>
     <main id="app">
       <header>
-        <h1>wordie</h1>
+        <!-- The mark is the Wordie Ice Shelf itself, drawn from the same file
+             the answers come from. `alt` carries the name, so the heading is
+             still text to anything that cannot see it. -->
+        <h1>
+          <img
+            class="wordmark"
+            src="./src/assets/banner.svg"
+            alt="wordie"
+            width="678"
+            height="256"
+          />
+        </h1>
         <p class="tagline">Guess the Antarctic ice shelf from its outline.</p>
       </header>
 

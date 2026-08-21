@@ -1,4 +1,4 @@
-# wordie
+<img src="web/src/assets/banner.svg" alt="wordie" width="339" />
 
 A browser game in the spirit of [worldl](https://worldl.io/country), but for
 Antarctic ice shelves. You are shown the outline of one ice shelf — its shape,
@@ -35,6 +35,10 @@ In the dataset this game draws from, Wordie survives as five fragments
 totalling 285 km². It is in the answer list. Every shelf in this game is a
 shape someone measured, and at least one of them is a shape that no longer
 exists.
+
+The mark above is those five fragments, at the scale and orientation the data
+gives them. `pixi run wordie-data logo` redraws it from the same file the
+answers come from, so it cannot drift away from them.
 
 ## Where the shapes come from
 
@@ -189,6 +193,7 @@ because that is what scoring a guess needs.
 | `web/src/scoring.ts` | Distance and bearing between two shelves |
 | `web/src/game.ts` | The rules, with no reference to the page they are drawn on |
 | `web/src/data/` | Derived outlines, committed, hashed into the build |
+| `web/src/assets/` | The logo, drawn from the Wordie outline by the pipeline |
 
 ## Running the pipeline
 
@@ -265,7 +270,7 @@ preparing derivative works. NSIDC's own
 and imposes no redistribution terms on data. The Earthdata Login that guards
 the downloads is an access mechanism, not a licence condition.
 
-So the derived outlines in `web/public/data/` are redistributable, and this
+So the derived outlines in `web/src/data/` are redistributable, and this
 repository does three things to keep that honest:
 
 - **Neither source file is committed or fetched automatically.** They are

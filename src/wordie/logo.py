@@ -285,6 +285,14 @@ def write_logo_set(geometry: BaseGeometry, directory: Path) -> LogoSet:
         # Theme-aware: inherits colour from the page it sits in.
         'logo.svg': render_mark(geometry),
         'logo-wordmark.svg': render_wordmark(geometry),
+        # The same wordmark with its colours written down, for the two places
+        # that cannot supply one. An <img> does not pass `currentColor` into
+        # the file it loads, and a README is rendered by GitHub against a
+        # background this repository does not choose -- where `currentColor`
+        # resolves to black and the mark disappears into a dark theme.
+        'banner.svg': render_wordmark(
+            geometry, LogoStyle(fill=SHELF, background=OCEAN)
+        ),
         # Favicons are shown against browser chrome of unknown colour, so this
         # one carries its own ground rather than inheriting one.
         'favicon.svg': render_mark(
