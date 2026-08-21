@@ -3,30 +3,67 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- Drawn from the Wordie Ice Shelf outline by `wordie-data logo`. Vite
-         rewrites the leading slash to the deploy base at build time. -->
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <title>wordie — guess the Antarctic ice shelf</title>
     <meta
       name="description"
       content="Guess the Antarctic ice shelf from its outline."
     />
+    <!-- Drawn from the Wordie Ice Shelf outline by `wordie-data logo`. Vite
+         rewrites the leading slash to the deploy base at build time. -->
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   </head>
   <body>
     <main id="app">
-      <h1>wordie</h1>
-      <p class="tagline">Guess the Antarctic ice shelf from its outline.</p>
+      <header>
+        <h1>wordie</h1>
+        <p class="tagline">Guess the Antarctic ice shelf from its outline.</p>
+      </header>
 
-      <!-- The outline is drawn into this panel once the pipeline that derives
-           it from BedMachine has landed. Fixed aspect ratio so that the shape
-           never stretches: scale is withheld from the player, distortion is
-           not. -->
-      <figure class="shelf" aria-label="Ice shelf outline">
-        <svg viewBox="0 0 100 100" role="img" aria-hidden="true"></svg>
-        <figcaption>Outlines are still being built.</figcaption>
+      <!-- Fixed aspect ratio so the shape never stretches: scale is withheld
+           from the player, distortion is not. -->
+      <figure class="shelf">
+        <svg viewBox="0 0 100 100" role="img" aria-label="Ice shelf outline">
+          <path id="outline" fill-rule="evenodd" />
+        </svg>
+        <figcaption id="reveal"></figcaption>
       </figure>
 
-      <p class="status" id="status"></p>
+      <form id="guess-form" autocomplete="off">
+        <label class="visually-hidden" for="guess-input">
+          Name an ice shelf
+        </label>
+        <input
+          id="guess-input"
+          type="text"
+          placeholder="Name an ice shelf…"
+          aria-describedby="remaining"
+          aria-autocomplete="list"
+          aria-controls="suggestions"
+        />
+        <ul
+          id="suggestions"
+          role="listbox"
+          aria-label="Matching ice shelves"
+        ></ul>
+      </form>
+
+      <p id="remaining" class="remaining" aria-live="polite"></p>
+      <ol id="guesses" class="guesses"></ol>
+      <p id="status" class="status" aria-live="polite"></p>
+
+      <footer>
+        <p>
+          Outlines from
+          <a href="https://nsidc.org/data/nsidc-0756"
+            >BedMachine Antarctica v4</a
+          >
+          and
+          <a href="https://nsidc.org/data/nsidc-0709"
+            >MEaSUREs Antarctic Boundaries v2</a
+          >. Distances are geodesic; arrows point as a polar stereographic map
+          does.
+        </p>
+      </footer>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>

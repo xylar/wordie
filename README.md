@@ -90,6 +90,26 @@ One shelf does not survive the crossing. `Paternostro`, 6.5 km² in MEaSUREs,
 has nothing floating in BedMachine at all, so the game has 164 shelves rather
 than 165.
 
+## Playing
+
+Six guesses. Every wrong one reports how far the shelf you named is from the
+answer, and an arrow pointing towards it.
+
+The answer comes from an everyday pool of 52: the 50 largest shelves, plus
+Wordie and Larsen A. Ranking by area turns out to be a good stand-in for fame —
+the largest 50 hold Ross, the Filchner-Ronne, Amery, Larsen B through D, George
+VI, Wilkins, Pine Island, Thwaites, Getz, Totten and the Dronning Maud Land
+chain — and it misses in exactly one way, which is that it cannot see a shelf
+famous for having gone. Wordie disintegrated by 2004 and Larsen A in 1995; both
+are far too small to qualify on area and far too well known to leave out.
+
+Guessing, though, is open across all 164 named shelves. A wrong guess is only
+worth making if it can tell you where you are.
+
+The puzzle is the same for everyone on a given UTC day — the players this is
+for are spread across every longitude by profession — and every shelf in the
+pool comes up once before any comes up twice.
+
 ## How a guess is scored
 
 Distance is the true geodesic distance between shelf centroids on WGS 84, in km.
@@ -101,6 +121,41 @@ circle from Ross to Amery passes close to the South Pole, so its initial bearing
 reads as "south" even though Amery lies at a lower latitude. The map-plane
 bearing matches the mental map the player is working from.
 
+## What the browser downloads
+
+`web/public/data/shelves.geojson` holds all 164 outlines: 577 kB, and about
+90 kB over the wire once the server compresses it. Two things make it that
+small, and both follow from the same fact — every shelf is drawn alone and
+scaled to fill the same box, so on screen Ross and Rydberg Peninsula are the
+same size.
+
+That makes anything measured in metres meaningless. A 500 m tolerance is a
+twentieth of a pixel on Ross and a quarter of the whole shape on Rydberg, so
+**simplification is relative to each shelf's own extent** — half a pixel at the
+size the game draws.
+
+Underneath sits a floor of one BedMachine cell, because an outline traced from
+a raster runs along cell edges and carries a staircase that is quantisation
+rather than coastline: no ice front is stepped at 500 m. The display tolerance
+only exceeds a cell on shelves wider than 250 km, and 36 of the 52 shelves in
+the answer pool are narrower than that, so without the floor most of the game
+is drawn with the grid showing through. The floor is capped against each
+*piece* rather than each shelf — Wordie's five fragments span 63 km but the
+smallest is 3 km across, and a whole cell would swallow it.
+
+Together these leave 30,770 vertices of the original 123,633, and move no
+well-known shelf's area by more than half a percent.
+
+The geometry is written in **EPSG:3031 metres rather than degrees**. RFC 7946
+asks for WGS 84 and allows another system by prior arrangement, which this is:
+the only consumer is the game, which draws in this projection, so degrees would
+mean projecting 30,000 coordinates in the browser to undo work already done in
+the pipeline. Whole metres are finer than the smallest shelf needs and compress
+to a third of what the same shapes cost as decimal degrees. The file says which
+projection it is in, and `--output` gives ordinary lon/lat GeoJSON if that is
+what you want. Shelf centroids stay in degrees, in each feature's properties,
+because that is what scoring a guess needs.
+
 ## Layout
 
 | Path | What lives there |
@@ -110,6 +165,7 @@ bearing matches the mental map the player is working from.
 | `tests/` | Tests for the pipeline, over synthetic rasters |
 | `web/` | The game itself: Vite + TypeScript, no framework |
 | `web/src/scoring.ts` | Distance and bearing between two shelves |
+| `web/src/game.ts` | The rules, with no reference to the page they are drawn on |
 | `web/public/data/` | Derived outlines, committed, served as static assets |
 
 ## Running the pipeline
