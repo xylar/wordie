@@ -10,6 +10,7 @@ from pathlib import Path
 
 from wordie.bedmachine import read_floating_mask
 from wordie.boundaries import NamedShelf, read_named_shelves
+from wordie.logo import write_logo_set
 from wordie.names import DISPLAY_OVERRIDES
 from wordie.outlines import DEFAULT_MIN_AREA_KM2, polygonize_floating_ice
 from wordie.projections import to_geographic
@@ -115,6 +116,33 @@ def _build_parser() -> argparse.ArgumentParser:
         help=(
             'markdown emits the full mapping as a table for review '
             '(default: %(default)s)'
+        ),
+    )
+
+    logo = subparsers.add_parser(
+        'logo',
+        help='draw the project logo from the Wordie Ice Shelf outline',
+    )
+    logo.add_argument(
+        '--boundaries',
+        type=Path,
+        default=DATA_DIR / BOUNDARIES_FILE,
+        help=(
+            'path to IceBoundaries_Antarctica_v02.shp (default: %(default)s)'
+        ),
+    )
+    logo.add_argument(
+        '--output-dir',
+        type=Path,
+        default=Path('web/public'),
+        help='where to write the SVGs (default: %(default)s)',
+    )
+    logo.add_argument(
+        '--shelf',
+        default='Wordie',
+        help=(
+            'dataset key of the shelf to draw; the default is the one the '
+            'project is named after (default: %(default)s)'
         ),
     )
     return parser
@@ -250,12 +278,38 @@ def _run_names(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_logo(args: argparse.Namespace) -> int:
+    boundaries = _require(
+        args.boundaries, '--boundaries', 'https://nsidc.org/data/nsidc-0709'
+    )
+    shelves = read_named_shelves(boundaries)
+    matches = [shelf for shelf in shelves if shelf.canonical == args.shelf]
+    if not matches:
+        raise SystemExit(
+            f'no shelf with dataset key {args.shelf!r}; '
+            f'run `wordie-data names` to see the {len(shelves)} available'
+        )
+    shelf = max(matches, key=lambda candidate: candidate.area_km2)
+
+    parts = len(shelf.source_names)
+    print(
+        f'{shelf.display}: {shelf.area_km2:,.0f} km2 in {parts} '
+        f'{"fragment" if parts == 1 else "fragments"}'
+    )
+    written = write_logo_set(shelf.geometry, args.output_dir)
+    for path in written.written:
+        print(f'  wrote {path} ({path.stat().st_size:,} bytes)')
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     if args.command == 'outlines':
         return _run_outlines(args)
     if args.command == 'names':
         return _run_names(args)
+    if args.command == 'logo':
+        return _run_logo(args)
     raise AssertionError(f'unhandled command {args.command!r}')
 
 
