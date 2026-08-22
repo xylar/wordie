@@ -83,6 +83,22 @@ h1 {
   font-size: 1.1rem;
   font-weight: 600;
   color: var(--ice);
+
+  /* The name sits over the outline, and a tall shelf fills the frame: Vigrid
+     is 54 by 64 km, so it is scaled to the height and its ink stops four
+     units short of the bottom edge, straight through the caption. Padding the
+     frame would not fix it -- every shelf taller than it is wide does the same
+     -- so the caption carries its own ground instead, and reads over ice or
+     water alike. */
+  padding: 0.2rem 0.8rem;
+  border-radius: 999px;
+  background: #12293aeb;
+  border: 1px solid #24435a;
+}
+
+/* No chip when there is no name to put in it, which is most of the game. */
+.shelf figcaption:empty {
+  display: none;
 }
 
 #guess-form {
