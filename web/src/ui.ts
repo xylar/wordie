@@ -18,6 +18,10 @@ export interface Elements {
   guesses: HTMLOListElement;
   status: HTMLElement;
   share: HTMLButtonElement;
+  daily: HTMLButtonElement;
+  practice: HTMLButtonElement;
+  hard: HTMLInputElement;
+  hardLabel: HTMLElement;
 }
 
 export const findElements = (): Elements | null => {
@@ -29,6 +33,10 @@ export const findElements = (): Elements | null => {
   const guesses = document.querySelector<HTMLOListElement>('#guesses');
   const status = document.querySelector<HTMLElement>('#status');
   const share = document.querySelector<HTMLButtonElement>('#share');
+  const daily = document.querySelector<HTMLButtonElement>('#mode-daily');
+  const practice = document.querySelector<HTMLButtonElement>('#mode-practice');
+  const hard = document.querySelector<HTMLInputElement>('#hard');
+  const hardLabel = document.querySelector<HTMLElement>('#hard-label');
   if (
     !outline ||
     !reveal ||
@@ -37,7 +45,11 @@ export const findElements = (): Elements | null => {
     !remaining ||
     !guesses ||
     !status ||
-    !share
+    !share ||
+    !daily ||
+    !practice ||
+    !hard ||
+    !hardLabel
   ) {
     return null;
   }
@@ -50,6 +62,10 @@ export const findElements = (): Elements | null => {
     guesses,
     status,
     share,
+    daily,
+    practice,
+    hard,
+    hardLabel,
   };
 };
 
@@ -157,6 +173,46 @@ export const reportCopy = (
   window.setTimeout(() => {
     elements.share.textContent = original;
   }, restoreAfterMs);
+};
+
+/** Clear the page down for a new round. */
+export const resetRound = (elements: Elements): void => {
+  elements.guesses.replaceChildren();
+  elements.suggestions.replaceChildren();
+  elements.status.textContent = '';
+  elements.reveal.textContent = '';
+  elements.input.value = '';
+  elements.input.disabled = false;
+  elements.share.hidden = true;
+};
+
+/**
+ * Show which puzzle is being played.
+ *
+ * The difficulty control is disabled rather than hidden while the daily round
+ * is on, because it does nothing there: the day's shelf always comes from the
+ * everyday pool, so that everyone is playing the same puzzle. A control that
+ * silently did nothing would be worse than one visibly switched off.
+ */
+export const renderMode = (
+  elements: Elements,
+  mode: 'daily' | 'practice',
+  difficulty: 'major' | 'all',
+): void => {
+  elements.daily.classList.toggle('selected', mode === 'daily');
+  elements.practice.classList.toggle('selected', mode === 'practice');
+  elements.daily.setAttribute('aria-pressed', String(mode === 'daily'));
+  elements.practice.setAttribute('aria-pressed', String(mode === 'practice'));
+  elements.practice.textContent =
+    mode === 'practice' ? 'New shelf' : 'Practice';
+
+  elements.hard.checked = difficulty === 'all';
+  elements.hard.disabled = mode === 'daily';
+  elements.hardLabel.classList.toggle('disabled', mode === 'daily');
+  elements.hardLabel.title =
+    mode === 'daily'
+      ? 'Today’s shelf always comes from the everyday set, so everyone plays the same puzzle.'
+      : 'Draw practice shelves from all 164 named shelves.';
 };
 
 export const clearSuggestions = (elements: Elements): void => {

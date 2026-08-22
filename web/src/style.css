@@ -328,3 +328,48 @@ footer a {
   padding: 0.5rem 1.2rem;
   cursor: pointer;
 }
+
+.modes {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+}
+
+.mode-buttons {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.mode-buttons button {
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--ice-dim);
+  background: var(--ocean-raised);
+  border: 1px solid #24435a;
+  border-radius: 0.4rem;
+  padding: 0.35rem 0.8rem;
+  cursor: pointer;
+}
+
+.mode-buttons button.selected {
+  color: var(--ocean);
+  background: var(--shelf);
+  border-color: var(--shelf);
+  font-weight: 600;
+}
+
+.hard-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--ice-dim);
+  cursor: pointer;
+}
+
+.hard-toggle.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

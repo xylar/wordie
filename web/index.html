@@ -32,6 +32,17 @@
 
       <!-- Fixed aspect ratio so the shape never stretches: scale is withheld
            from the player, distortion is not. -->
+      <div class="modes">
+        <div class="mode-buttons" role="group" aria-label="Which puzzle">
+          <button id="mode-daily" type="button">Today</button>
+          <button id="mode-practice" type="button">Practice</button>
+        </div>
+        <label class="hard-toggle" id="hard-label">
+          <input id="hard" type="checkbox" />
+          all 164 shelves
+        </label>
+      </div>
+
       <figure class="shelf">
         <svg viewBox="0 0 100 100" role="img" aria-label="Ice shelf outline">
           <path id="outline" fill-rule="evenodd" />
