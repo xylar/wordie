@@ -15,18 +15,14 @@
   <body>
     <main id="app">
       <header>
-        <!-- The mark is the Wordie Ice Shelf itself, drawn from the same file
-             the answers come from. `alt` carries the name, so the heading is
-             still text to anything that cannot see it. -->
-        <h1>
-          <img
-            class="wordmark"
-            src="./src/assets/banner.svg"
-            alt="wordie"
-            width="678"
-            height="256"
-          />
-        </h1>
+        <!-- Text, replaced at runtime by the wordmark drawn from the Wordie
+             Ice Shelf outline. The mark is inlined rather than loaded through
+             an <img>: an image is a separate document that does not inherit
+             this page's `color-scheme`, and Chrome for Android's "darken
+             websites" setting inverts it on its own, turning the mark's dark
+             ground into pale blue on a page that stayed dark. Inlined, it is
+             ordinary DOM and takes its colour from the page. -->
+        <h1 class="wordmark">wordie</h1>
         <p class="tagline">Guess the Antarctic ice shelf from its outline.</p>
       </header>
 

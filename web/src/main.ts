@@ -6,6 +6,7 @@ import type { Difficulty } from './pool';
 import { forgetOldGames, loadGame, saveGame } from './storage';
 import { loadCollection, type ShelfFeature } from './shelves';
 import { renderAbout } from './about';
+import { drawWordmark } from './wordmark';
 import { copyToClipboard, shareText } from './share';
 import {
   clearSuggestions,
@@ -21,6 +22,9 @@ import {
 } from './ui';
 
 const elements = findElements();
+
+// Before anything is fetched: the mark does not depend on the outlines.
+drawWordmark();
 
 /**
  * Wire the about panel.

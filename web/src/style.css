@@ -39,9 +39,16 @@ h1 {
 }
 
 .wordmark {
-  /* The banner carries the ocean colour as its own background, which is the
-     page's, so it needs no seam hiding. Height rather than width, so the mark
-     keeps its size when the column narrows. */
+  /* The heading holds the inlined mark, which fills with `currentColor`. */
+  color: var(--shelf);
+  font-size: 2.25rem;
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+
+.wordmark svg {
+  /* Height rather than width, so the mark keeps its size as the column
+     narrows; the viewBox carries the aspect ratio. */
   height: 5rem;
   width: auto;
   max-width: 100%;
