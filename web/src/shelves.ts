@@ -36,9 +36,21 @@ export interface ShelfFeature {
   };
 }
 
+/** One of the datasets the outlines are derived from. */
+export interface Source {
+  role: string;
+  title: string;
+  citation: string;
+  doi: string;
+  reference: string;
+}
+
 export interface ShelfCollection {
   type: 'FeatureCollection';
   crs: string;
+  /** Why this file is not the source data. */
+  note: string;
+  sources: Source[];
   features: ShelfFeature[];
 }
 
@@ -188,13 +200,16 @@ export const outlinePath = (
  * how a fortnight of outline fixes reached the deployed site and not the
  * people looking at it.
  */
-export const loadShelves = async (
+export const loadCollection = async (
   url: string = shelvesUrl,
-): Promise<ShelfFeature[]> => {
+): Promise<ShelfCollection> => {
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`could not load the ice shelves: ${response.status}`);
   }
-  const collection = (await response.json()) as ShelfCollection;
-  return collection.features;
+  return (await response.json()) as ShelfCollection;
 };
+
+export const loadShelves = async (
+  url: string = shelvesUrl,
+): Promise<ShelfFeature[]> => (await loadCollection(url)).features;
