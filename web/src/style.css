@@ -210,3 +210,28 @@ footer a {
   overflow: hidden;
   clip-path: inset(50%);
 }
+
+.share-row {
+  margin: 0.85rem 0 0;
+  text-align: center;
+}
+
+#share {
+  font: inherit;
+  font-weight: 600;
+  color: var(--ocean);
+  background: var(--shelf);
+  border: 0;
+  border-radius: 0.5rem;
+  padding: 0.55rem 1.4rem;
+  cursor: pointer;
+}
+
+#share:hover {
+  background: var(--ice);
+}
+
+#share:focus-visible {
+  outline: 2px solid var(--ice);
+  outline-offset: 2px;
+}

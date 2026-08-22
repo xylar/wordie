@@ -23,6 +23,9 @@ env/
 # Web build output and dependencies
 web/node_modules/
 web/dist/
+# vitest drops its cache beside whatever directory it was invoked from, which
+# is not always web/.
+.vite/
 
 # Source datasets are large and are not redistributable: BedMachine v4 is 1.2
 # GB and both it and the MEaSUREs boundaries sit behind an Earthdata Login.
