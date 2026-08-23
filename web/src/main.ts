@@ -1,6 +1,7 @@
 import './style.css';
 import { createGame, matchingShelves, submitGuess, type Game } from './game';
 import { puzzleNumber } from './daily';
+import { isHalloween } from './halloween';
 import { dailyRound, practiceRound, type Mode, type Round } from './rounds';
 import type { Level } from './pool';
 import { forgetOldGames, loadGame, saveGame } from './storage';
@@ -16,6 +17,7 @@ import {
   findElements,
   renderChoices,
   renderGuesses,
+  renderSky,
   renderStatus,
   renderSuggestions,
   reportCopy,
@@ -56,11 +58,21 @@ const showAbout = (
 const start = async (): Promise<void> => {
   if (!elements) return;
 
+  const today = new Date();
+
+  // Before the outlines are fetched, for the reason the wordmark is drawn
+  // before them: the sky does not depend on the data, and a moon that turns
+  // up half a second late is a moon the player watched arrive.
+  //
+  // The sky follows the date, not the mode. On Halloween it is up for the
+  // whole day, practice rounds included; hanging it on the daily round would
+  // make the scenery blink out the moment somebody pressed Practice.
+  if (isHalloween(today)) renderSky(document.body);
+
   const collection = await loadCollection();
   const shelves = collection.features;
   showAbout(collection.sources, collection.note);
 
-  const today = new Date();
   const puzzle = puzzleNumber(today);
   const byKey = new Map(shelves.map((shelf) => [shelf.properties.key, shelf]));
 

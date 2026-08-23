@@ -294,6 +294,49 @@ export const renderMode = (
   }
 };
 
+/**
+ * Hang a full moon behind the page, with cloud drifting across it.
+ *
+ * Built here rather than kept hidden in `index.html`, so that on the other
+ * 364 days of the year none of it is in the document: no moon to be found in
+ * the markup by anyone poking at the page before the day, which is most of
+ * what makes an easter egg worth having.
+ *
+ * The moon and the cloud are shapes made of gradients rather than an image.
+ * They are the only art in the game that was not derived from the data, and
+ * an SVG of a moon in `assets/` would sit next to outlines that were all
+ * traced by a pipeline, inviting the question of which of the two the shelves
+ * are.
+ */
+export const renderSky = (root: HTMLElement): void => {
+  if (root.querySelector('#sky')) return;
+  const doc = root.ownerDocument;
+
+  const sky = doc.createElement('div');
+  sky.id = 'sky';
+  // Decoration with nothing to say. The puzzle is the outline; a screen
+  // reader announcing scenery would only be in the way of it.
+  sky.setAttribute('aria-hidden', 'true');
+
+  const moon = doc.createElement('div');
+  moon.className = 'moon';
+  sky.append(moon);
+
+  // Three, at different heights and speeds. One is enough for the picture the
+  // day asks for; the others give the sky a depth that a single band crossing
+  // an empty background does not.
+  for (const index of [1, 2, 3]) {
+    const cloud = doc.createElement('div');
+    cloud.className = `cloud cloud-${index}`;
+    sky.append(cloud);
+  }
+
+  // Behind everything, and first in the document so that nothing focusable
+  // comes before the game.
+  root.prepend(sky);
+  root.classList.add('halloween');
+};
+
 export const clearSuggestions = (elements: Elements): void => {
   elements.suggestions.replaceChildren();
 };
