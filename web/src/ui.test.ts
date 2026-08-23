@@ -1,6 +1,199 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from 'vitest';
-import { renderSky } from './ui';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  findElements,
+  renderChoices,
+  renderMode,
+  renderSky,
+  renderStatus,
+  type Elements,
+} from './ui';
+import { createGame, submitGuess, type Game } from './game';
+import { EASY_CHOICES, EASY_GUESSES } from './pool';
+import type { Round } from './rounds';
+import type { ShelfFeature } from './shelves';
+
+const shelf = (key: string, lon = 0): ShelfFeature => ({
+  type: 'Feature',
+  properties: { key, name: key, area_km2: 1000, lon, lat: -70 },
+  geometry: {
+    type: 'MultiPolygon',
+    coordinates: [
+      [
+        [
+          [0, 0],
+          [1, 0],
+          [1, 1],
+        ],
+      ],
+    ],
+  },
+});
+
+const CHOICES = ['Amery', 'Getz', 'LarsenC', 'Ronne', 'Ross', 'Wordie'].map(
+  (key, i) => shelf(key, i * 20 - 60),
+);
+const ANSWER = CHOICES[4] as ShelfFeature;
+
+/** Enough of the page for the renderers to write into. */
+const page = `
+  <path id="outline"></path>
+  <p id="reveal"></p>
+  <form id="guess-form"><input id="guess-input" /><ul id="suggestions"></ul></form>
+  <ul id="choices"></ul>
+  <p id="remaining"></p>
+  <ol id="guesses"></ol>
+  <p id="status"></p>
+  <button id="share"></button>
+  <button id="mode-daily"></button>
+  <button id="mode-practice"></button>
+  <div class="level-buttons">
+    <button data-level="easy"></button>
+    <button data-level="normal"></button>
+    <button data-level="hard"></button>
+  </div>`;
+
+const easyRound = (): Round => ({
+  answer: ANSWER,
+  level: 'easy',
+  choices: CHOICES,
+  maxGuesses: EASY_GUESSES,
+  persist: true,
+});
+
+const openRound = (): Round => ({
+  answer: ANSWER,
+  level: 'normal',
+  choices: null,
+  maxGuesses: 6,
+  persist: true,
+});
+
+let elements: Elements;
+const buttons = (): HTMLButtonElement[] => [
+  ...elements.choices.querySelectorAll('button'),
+];
+
+beforeEach(() => {
+  document.body.innerHTML = page;
+  elements = findElements() as Elements;
+  expect(elements).not.toBeNull();
+});
+
+describe('the easy-mode choice list', () => {
+  it('shows the names instead of the text input', () => {
+    const game = createGame(ANSWER, EASY_GUESSES);
+    renderChoices(elements, easyRound(), game, () => undefined);
+
+    expect(elements.form.hidden).toBe(true);
+    expect(buttons().map((b) => b.textContent)).toEqual(
+      CHOICES.map((s) => s.properties.name),
+    );
+  });
+
+  it('plays the name that was pressed', () => {
+    const onPick = vi.fn();
+    renderChoices(
+      elements,
+      easyRound(),
+      createGame(ANSWER, EASY_GUESSES),
+      onPick,
+    );
+    buttons()[1]?.click();
+    expect(onPick).toHaveBeenCalledWith(CHOICES[1]);
+  });
+
+  it('leaves a spent name visible but dead', () => {
+    // Removing it would take away the row the player is reading the distance
+    // and arrow off, and hiding the miss is the opposite of the point.
+    const game = submitGuess(
+      createGame(ANSWER, EASY_GUESSES),
+      CHOICES[0] as ShelfFeature,
+    );
+    renderChoices(elements, easyRound(), game, () => undefined);
+
+    const spent = buttons()[0] as HTMLButtonElement;
+    expect(spent.disabled).toBe(true);
+    expect(spent.textContent).toBe('Amery');
+    expect(buttons()[1]?.disabled).toBe(false);
+  });
+
+  it('closes the list and marks the answer once the round is over', () => {
+    const lost = [CHOICES[0], CHOICES[1]].reduce(
+      (game: Game, guess) => submitGuess(game, guess as ShelfFeature),
+      createGame(ANSWER, EASY_GUESSES),
+    );
+    expect(lost.status).toBe('lost');
+    renderChoices(elements, easyRound(), lost, () => undefined);
+
+    expect(buttons().every((b) => b.disabled)).toBe(true);
+    expect(
+      buttons().filter((b) => b.classList.contains('answer')),
+    ).toHaveLength(1);
+    expect(
+      buttons().find((b) => b.classList.contains('answer'))?.textContent,
+    ).toBe(ANSWER.properties.name);
+  });
+
+  it('offers exactly as many names as easy mode promises', () => {
+    renderChoices(
+      elements,
+      easyRound(),
+      createGame(ANSWER, EASY_GUESSES),
+      () => undefined,
+    );
+    expect(buttons()).toHaveLength(EASY_CHOICES);
+  });
+});
+
+describe('above easy', () => {
+  it('leaves the text input in place and the list empty', () => {
+    // `#choices:empty` is what keeps it out of the layout, so the list has to
+    // actually be empty rather than merely hidden.
+    renderChoices(elements, openRound(), createGame(ANSWER), () => undefined);
+    expect(elements.form.hidden).toBe(false);
+    expect(elements.choices.children).toHaveLength(0);
+  });
+});
+
+describe('the share button', () => {
+  it('appears when a daily round ends', () => {
+    renderStatus(elements, submitGuess(createGame(ANSWER), ANSWER), true);
+    expect(elements.share.hidden).toBe(false);
+  });
+
+  it('stays away when a practice round ends', () => {
+    // A practice grid would go out stamped with today's puzzle number for a
+    // shelf that was not today's.
+    renderStatus(elements, submitGuess(createGame(ANSWER), ANSWER), false);
+    expect(elements.share.hidden).toBe(true);
+  });
+});
+
+describe('the level control', () => {
+  const levelButton = (level: string): HTMLButtonElement =>
+    elements.levels.find(
+      (b) => b.dataset['level'] === level,
+    ) as HTMLButtonElement;
+
+  it('bars hard on the daily round and nothing else', () => {
+    renderMode(elements, 'daily', 'normal');
+    expect(levelButton('hard').disabled).toBe(true);
+    expect(levelButton('easy').disabled).toBe(false);
+    expect(levelButton('normal').disabled).toBe(false);
+  });
+
+  it('opens hard up in practice', () => {
+    renderMode(elements, 'practice', 'normal');
+    expect(levelButton('hard').disabled).toBe(false);
+  });
+
+  it('marks the level being played', () => {
+    renderMode(elements, 'daily', 'easy');
+    expect(levelButton('easy').getAttribute('aria-pressed')).toBe('true');
+    expect(levelButton('normal').getAttribute('aria-pressed')).toBe('false');
+  });
+});
 
 describe('the Halloween sky', () => {
   beforeEach(() => {

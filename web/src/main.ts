@@ -3,7 +3,7 @@ import { createGame, matchingShelves, submitGuess, type Game } from './game';
 import { puzzleNumber } from './daily';
 import { isHalloween } from './halloween';
 import { dailyRound, practiceRound, type Mode, type Round } from './rounds';
-import type { Difficulty } from './pool';
+import type { Level } from './pool';
 import { forgetOldGames, loadGame, saveGame } from './storage';
 import { loadCollection, type ShelfFeature } from './shelves';
 import { renderAbout } from './about';
@@ -15,6 +15,7 @@ import {
   resetRound,
   drawOutline,
   findElements,
+  renderChoices,
   renderGuesses,
   renderSky,
   renderStatus,
@@ -76,35 +77,36 @@ const start = async (): Promise<void> => {
   const byKey = new Map(shelves.map((shelf) => [shelf.properties.key, shelf]));
 
   let mode: Mode = 'daily';
-  let difficulty: Difficulty = 'major';
+  let level: Level = 'normal';
   let round: Round | null = null;
   let game: Game | null = null;
 
   const persist = (): void => {
     if (!round?.persist || !game) return;
-    saveGame(puzzle, {
+    saveGame(puzzle, round.level, {
       answer: round.answer.properties.key,
       guesses: game.guesses.map((guess) => guess.key),
     });
   };
 
   const redraw = (): void => {
-    if (!elements || !game) return;
+    if (!elements || !game || !round) return;
     renderGuesses(elements, game);
-    renderStatus(elements, game);
+    renderStatus(elements, game, round.persist);
+    renderChoices(elements, round, game, play);
   };
 
   const begin = (next: Round): void => {
     if (!elements) return;
     round = next;
-    game = createGame(next.answer);
+    game = createGame(next.answer, next.maxGuesses);
 
     // Only a daily round has anything to restore; a practice round starts
     // fresh by definition. Replaying the saved guesses rather than restoring
     // the state they produced means a game resumed after a change to the
     // scoring comes back scored the new way.
     if (next.persist) {
-      const saved = loadGame(puzzle, next.answer.properties.key);
+      const saved = loadGame(puzzle, next.level, next.answer.properties.key);
       for (const key of saved?.guesses ?? []) {
         const shelf = byKey.get(key);
         if (shelf) game = submitGuess(game, shelf);
@@ -123,7 +125,11 @@ const start = async (): Promise<void> => {
     elements.input.value = '';
     clearSuggestions(elements);
     redraw();
-    if (game.status === 'playing') elements.input.focus();
+    // Easy mode has no input to return to -- the form is hidden behind the
+    // six buttons -- and focusing a hidden field would drop focus off the
+    // page entirely.
+    if (game.status === 'playing' && !elements.form.hidden)
+      elements.input.focus();
   };
 
   const suggest = (): ShelfFeature[] => {
@@ -137,20 +143,24 @@ const start = async (): Promise<void> => {
   };
 
   const startDaily = (): void => {
-    const next = dailyRound(shelves, today);
+    // Hard cannot follow the player into the daily: it would change which
+    // shelf the day gets. Dropping to normal rather than refusing the click
+    // keeps the level control and the round in agreement.
+    if (level === 'hard') level = 'normal';
+    const next = dailyRound(shelves, today, level, puzzle);
     if (!next) {
       showError(elements!, 'No ice shelves to play with.');
       return;
     }
     mode = 'daily';
     begin(next);
-    renderMode(elements!, mode, difficulty);
+    renderMode(elements!, mode, level);
   };
 
   const startPractice = (): void => {
     const next = practiceRound(
       shelves,
-      difficulty,
+      level,
       Math.random,
       round?.answer.properties.key,
     );
@@ -160,13 +170,12 @@ const start = async (): Promise<void> => {
     }
     mode = 'practice';
     begin(next);
-    renderMode(elements!, mode, difficulty);
+    renderMode(elements!, mode, level);
   };
 
   elements.input.addEventListener('input', suggest);
 
-  const form = document.querySelector<HTMLFormElement>('#guess-form');
-  form?.addEventListener('submit', (event) => {
+  elements.form.addEventListener('submit', (event) => {
     event.preventDefault();
     // Enter takes the first match, so a name can be played without reaching
     // for the mouse.
@@ -181,6 +190,7 @@ const start = async (): Promise<void> => {
       // Wherever this copy of the game is served from, so a pasted result
       // links back to the game rather than to a guess about where it lives.
       url: new URL(import.meta.env.BASE_URL, window.location.href).href,
+      level,
     });
     void copyToClipboard(text).then((copied) => {
       reportCopy(elements!, copied);
@@ -189,13 +199,20 @@ const start = async (): Promise<void> => {
 
   elements.daily.addEventListener('click', startDaily);
   elements.practice.addEventListener('click', startPractice);
-  elements.hard.addEventListener('change', () => {
-    difficulty = elements!.hard.checked ? 'all' : 'major';
-    // Changing the pool mid-round would leave the shelf on screen belonging
-    // to a set the player is no longer playing, so it deals a new one.
-    if (mode === 'practice') startPractice();
-    else renderMode(elements!, mode, difficulty);
-  });
+  for (const button of elements.levels) {
+    button.addEventListener('click', () => {
+      const chosen = button.dataset['level'] as Level;
+      if (chosen === level) return;
+      level = chosen;
+      // A level change restarts the round rather than reshaping the one on
+      // screen. In practice the pool it was drawn from may no longer be the
+      // pool being played; on the daily the shelf is the same either way, but
+      // the guesses allowed and the names offered are not, and each level
+      // keeps its own save, so restarting is how the right one is picked up.
+      if (mode === 'practice') startPractice();
+      else startDaily();
+    });
+  }
 
   startDaily();
   forgetOldGames(puzzle);

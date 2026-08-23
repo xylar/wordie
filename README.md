@@ -116,12 +116,38 @@ pool comes up once before any comes up twice. A game in progress survives a
 reload; a finished one can be copied as a grid of squares that says how it went
 without saying what the answer was.
 
-**Practice** deals a shelf at random instead, as often as you like, and is the
-only place the difficulty setting applies: it draws from all 164 named shelves
-rather than the everyday 52. Hard mode deliberately does not touch the daily
-round. If it changed which shelf the day got, two people comparing results
-would be comparing different puzzles, and the shared grid would quietly stop
-meaning anything.
+**Practice** deals a shelf at random instead, as often as you like.
+
+### Levels
+
+**Easy** names six candidates and allows two guesses at them. Six against the
+everyday 52: a blind pick wins one game in six, and a second guess informed by
+the first one's distance and arrow wins better than one in three before any
+knowledge of the continent comes into it at all. Two guesses rather than six,
+because six guesses at six names is not a puzzle — the last one is right by
+elimination and the arrows stop mattering.
+
+**Normal** is the game above: six guesses, open across all 164 names.
+
+**Hard** draws the shelf from all 164 rather than the everyday 52.
+
+Hard deliberately does not touch the daily round. If it changed which shelf the
+day got, two people comparing results would be comparing different puzzles, and
+the shared grid would quietly stop meaning anything.
+
+Easy is allowed there, and the same rule is why. It does not change which shelf
+the day gets — everyone on every level is naming the same outline — it only
+shortens the list of names offered for it. The day's six are drawn from the
+puzzle number rather than at random, so two players on easy are choosing from
+the same list, and the shared line says which level it was played at:
+
+```
+wordie #7 easy 1/2
+wordie #7 4/6
+```
+
+Each level keeps its own save for the day, so switching does not throw away a
+game in progress.
 
 ## How a guess is scored
 

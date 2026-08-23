@@ -383,18 +383,94 @@ footer a {
   font-weight: 600;
 }
 
-.hard-toggle {
+.level-buttons {
   display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.8rem;
+  gap: 0.35rem;
+}
+
+.level-buttons button {
+  font: inherit;
+  font-size: 0.85rem;
   color: var(--ice-dim);
+  background: var(--ocean-raised);
+  border: 1px solid #24435a;
+  border-radius: 0.4rem;
+  padding: 0.35rem 0.7rem;
   cursor: pointer;
 }
 
-.hard-toggle.disabled {
+.level-buttons button.selected {
+  color: var(--ocean);
+  background: var(--shelf);
+  border-color: var(--shelf);
+  font-weight: 600;
+}
+
+.level-buttons button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* Easy mode's six names. Two columns rather than one: six full-width rows
+   push the guess list off a phone screen, and the names are short. */
+.choices {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.4rem;
+}
+
+.choices:empty {
+  display: none;
+}
+
+.choices button {
+  width: 100%;
+  font: inherit;
+  color: var(--ice);
+  background: var(--ocean-raised);
+  border: 1px solid #24435a;
+  border-radius: 0.5rem;
+  padding: 0.7rem 0.6rem;
+  cursor: pointer;
+}
+
+.choices button:hover:not(:disabled),
+.choices button:focus-visible:not(:disabled) {
+  background: #1d3d52;
+}
+
+/* A name already guessed stays legible but is plainly done with: struck
+   through rather than merely dimmed, because dimming alone is what a
+   disabled button looks like anyway. */
+.choices button.spent {
+  text-decoration: line-through;
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* The answer, once the round is over. */
+.choices button.answer {
+  color: var(--ocean);
+  background: var(--shelf);
+  border-color: var(--shelf);
+  opacity: 1;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.choices button:disabled {
+  cursor: default;
+}
+
+@media (max-width: 24rem) {
+  .modes {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
 }
 
 /* ---------------------------------------------------------------------------

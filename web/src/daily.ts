@@ -78,3 +78,21 @@ export const shelfForDate = (
   const position = ((number % pool.length) + pool.length) % pool.length;
   return pool[order[position] as number];
 };
+
+/**
+ * A fixed random source for one day's easy-mode choices.
+ *
+ * Easy mode has to offer everyone the same six names on the same day, for the
+ * same reason everyone gets the same shelf: a result of 1/2 means nothing next
+ * to someone else's if the two players were choosing from different lists.
+ *
+ * The puzzle number is scrambled by the golden-ratio constant before seeding.
+ * Consecutive days are consecutive integers, and feeding those straight in
+ * would leave neighbouring days' draws correlated -- yesterday's five
+ * distractors turning up again today, which reads as the game being broken
+ * long before anyone works out that it is not.
+ */
+export const dailyRandom = (puzzle: number): (() => number) =>
+  mulberry32(Math.imul(puzzle + 1, 0x9e3779b1) ^ CHOICE_SEED);
+
+const CHOICE_SEED = 0xc401ce;
