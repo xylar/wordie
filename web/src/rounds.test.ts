@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { dailyRound, practiceRound } from './rounds';
-import { MAJOR_POOL_SIZE, NOTABLE_KEYS } from './pool';
+import { shelfForDate } from './daily';
+import { HALLOWEEN_KEY, isHalloween } from './halloween';
+import { answerPool, MAJOR_POOL_SIZE, NOTABLE_KEYS } from './pool';
 import type { ShelfFeature } from './shelves';
 
 const shelf = (key: string, area: number): ShelfFeature => ({
@@ -20,13 +22,16 @@ const shelf = (key: string, area: number): ShelfFeature => ({
   },
 });
 
-// Eighty shelves by area, plus the two that are famous for having gone.
+// Eighty shelves by area, plus the two that are famous for having gone and
+// the one that looks like a ghost. Wilkins is given an area that puts it in
+// the everyday pool, which is where it sits in the real data.
 const SHELVES: ShelfFeature[] = [
   ...Array.from({ length: 80 }, (_v, i) =>
     shelf(`S${String(i).padStart(2, '0')}`, 100_000 - i * 100),
   ),
   shelf('Wordie', 213),
   shelf('LarsenA', 667),
+  shelf(HALLOWEEN_KEY, 99_950),
 ];
 
 const MAJOR_TOTAL = MAJOR_POOL_SIZE + NOTABLE_KEYS.length;
@@ -61,6 +66,43 @@ describe('the daily round', () => {
 
   it('has nothing to offer with no shelves', () => {
     expect(dailyRound([], date)).toBeNull();
+  });
+});
+
+describe('Halloween', () => {
+  const halloween = new Date(Date.UTC(2026, 9, 31));
+
+  it('deals the ghost', () => {
+    expect(dailyRound(SHELVES, halloween)?.answer.properties.key).toBe(
+      HALLOWEEN_KEY,
+    );
+  });
+
+  it('is still an ordinary daily round, saved like any other', () => {
+    expect(dailyRound(SHELVES, halloween)?.persist).toBe(true);
+  });
+
+  it('leaves every other day where the rotation put it', () => {
+    // The joke replaces one day rather than displacing the rest. If it
+    // shifted the rotation, every date after it would get a different shelf
+    // from the one it was going to get, once a year, for a gag.
+    const pool = answerPool(SHELVES, 'major');
+    for (let day = 0; day < 400; day += 1) {
+      const on = new Date(Date.UTC(2026, 7, 21 + day));
+      if (isHalloween(on)) continue;
+      expect(dailyRound(SHELVES, on)?.answer.properties.key).toBe(
+        shelfForDate(pool, on)?.properties.key,
+      );
+    }
+  });
+
+  it('falls back to the rotation when there is no ghost to deal', () => {
+    const ghostless = SHELVES.filter(
+      (feature) => feature.properties.key !== HALLOWEEN_KEY,
+    );
+    expect(dailyRound(ghostless, halloween)?.answer.properties.key).toBe(
+      shelfForDate(answerPool(ghostless, 'major'), halloween)?.properties.key,
+    );
   });
 });
 

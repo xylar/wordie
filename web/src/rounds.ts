@@ -14,6 +14,7 @@
  */
 
 import { shelfForDate } from './daily';
+import { halloweenShelf } from './halloween';
 import { answerPool, type Difficulty } from './pool';
 import type { ShelfFeature } from './shelves';
 
@@ -25,11 +26,23 @@ export interface Round {
   persist: boolean;
 }
 
+/**
+ * The day's puzzle.
+ *
+ * Halloween is the one exception to the rotation, and it is an exception
+ * rather than a reordering: the shelf the rotation had for 31 October is
+ * skipped that year, not pushed along, so every other day of every other year
+ * gets the shelf it would have got anyway. Wilkins keeps its own place in the
+ * rotation too, which is why it can come up twice in the same autumn -- the
+ * alternative is a rotation that shifts under everyone once a year to protect
+ * a joke.
+ */
 export const dailyRound = (
   shelves: ShelfFeature[],
   date: Date,
 ): Round | null => {
-  const answer = shelfForDate(answerPool(shelves, 'major'), date);
+  const pool = answerPool(shelves, 'major');
+  const answer = halloweenShelf(pool, date) ?? shelfForDate(pool, date);
   return answer ? { answer, persist: true } : null;
 };
 

@@ -396,3 +396,168 @@ footer a {
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* ---------------------------------------------------------------------------
+   Halloween.
+
+   On 31 October the day's shelf is Wilkins, which the game draws as a ghost
+   without anything being done to it (see `halloween.ts`). This gives it
+   something to haunt. All of it hangs off `body.halloween`, a class only
+   `renderSky` adds, so on every other day these rules match nothing.
+   --------------------------------------------------------------------------- */
+
+body.halloween {
+  /* The ocean, with the moon's warmth spilling into the corner it hangs in. */
+  background: radial-gradient(90% 55% at 82% 0%, #17293b 0%, #0b1d2a 65%)
+    var(--ocean);
+  background-attachment: fixed;
+}
+
+/* The sky is positioned, and a positioned element paints over the text of one
+   that is not -- so the column has to be lifted above it explicitly or the
+   moon rises straight through the guesses. */
+body.halloween #app {
+  position: relative;
+  z-index: 1;
+}
+
+#sky {
+  --moon-size: clamp(6rem, 13vw, 9.5rem);
+
+  position: fixed;
+  inset: 0;
+  /* Cloud enters and leaves beyond the edges; without this it would widen the
+     page and put a scrollbar along the bottom for the whole of Halloween. */
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.moon {
+  position: absolute;
+  top: 2.5rem;
+  /* Clear of the 34rem column where there is room beside it -- half the
+     column is 17rem, and the rest of the subtraction is the moon's own width
+     and a margin -- and tucked past the right edge when there is not. The
+     game has to stay readable over it either way, and pale text over a full
+     moon does not. */
+  right: max(-1.5rem, calc(50vw - 18rem - var(--moon-size)));
+  width: var(--moon-size);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background:
+    /* Maria, in the order they are drawn over the disc: three grey patches
+       and then the lit surface underneath them. */
+    radial-gradient(circle at 38% 30%, #cbbc9440 0 13%, transparent 14%),
+    radial-gradient(circle at 58% 52%, #cbbc9436 0 17%, transparent 18%),
+    radial-gradient(circle at 42% 68%, #cbbc942e 0 10%, transparent 11%),
+    radial-gradient(circle at 62% 36%, #fffcf1 0%, #f4ead0 52%, #dccfa8 100%);
+  /* Two shadows, not one: the near halo reads as the moon's own brightness,
+     the far one as the sky it lights. */
+  box-shadow:
+    0 0 3rem 0.5rem #f6ebc426,
+    0 0 9rem 3rem #f6ebc412;
+}
+
+/*
+ * Cloud: a wide box with five lobes blurred into each other.
+ *
+ * Sized in rem rather than in viewport units, so that the puff stays a puff
+ * on a phone instead of stretching into a smear the width of the screen.
+ */
+.cloud {
+  position: absolute;
+  left: 0;
+  width: 22rem;
+  height: 8.5rem;
+  /* Ellipses given their own radii rather than `circle`, whose default size
+     is farthest-corner: on a box this much wider than it is tall, that put
+     the edge of every lobe outside the box and drew a rectangle.
+
+     Lighter than the sky, not darker. A cloud drawn as a silhouette is
+     invisible against a night sky until it reaches the moon, and then it
+     reads as a bite taken out of the moon rather than as something passing
+     in front of it. Lit from behind, it is there the whole way across. */
+  background:
+    radial-gradient(5.5rem 3rem at 22% 64%, #26445f 0 80%, transparent 100%),
+    radial-gradient(7rem 4rem at 45% 43%, #2e4e6c 0 80%, transparent 100%),
+    radial-gradient(5.5rem 3.2rem at 66% 58%, #26445f 0 80%, transparent 100%),
+    radial-gradient(4rem 2.2rem at 85% 70%, #203950 0 80%, transparent 100%),
+    /* The flat underside cloud has and a pile of lobes does not. */
+    radial-gradient(9rem 2rem at 50% 74%, #24405a 0 82%, transparent 100%);
+  filter: blur(0.35rem);
+  animation: drift linear infinite;
+}
+
+/* Right to left, entering off one edge and leaving past the other. */
+@keyframes drift {
+  from {
+    transform: translateX(105vw);
+  }
+  to {
+    transform: translateX(-23rem);
+  }
+}
+
+/* The negative delays start each one part-way across, so the sky is already
+   in motion when the page loads rather than empty for the first minute. The
+   nearest cloud is placed to be crossing the moon at that moment. */
+.cloud-1 {
+  top: 4.5rem;
+  opacity: 0.8;
+  animation-duration: 95s;
+  animation-delay: -22s;
+}
+
+.cloud-2 {
+  top: 14rem;
+  scale: 0.8;
+  opacity: 0.45;
+  animation-duration: 145s;
+  animation-delay: -95s;
+}
+
+.cloud-3 {
+  top: 40vh;
+  scale: 1.3;
+  opacity: 0.3;
+  animation-duration: 210s;
+  animation-delay: -40s;
+}
+
+/* Movement is the part that can be unwelcome, not the picture. With it off,
+   the clouds are parked where the animation would have put them -- one of
+   them across the moon, which is the image the day is here for. */
+@media (prefers-reduced-motion: reduce) {
+  .cloud {
+    animation: none;
+  }
+
+  /* Anchored to the right edge rather than translated, so it lands across
+     the moon on a phone as well as on a desktop -- the moon is anchored the
+     same way. */
+  .cloud-1 {
+    left: auto;
+    right: -6rem;
+  }
+
+  .cloud-2 {
+    transform: translateX(8vw);
+  }
+
+  .cloud-3 {
+    transform: translateX(46vw);
+  }
+}
+
+/* The ghost catches the moonlight. Nothing about the outline itself changes:
+   this is a shadow cast around the same path the pipeline derived. */
+body.halloween .shelf svg {
+  filter: drop-shadow(0 0 0.6rem #cfe6f05c);
+}
+
+/* Enough of the frame's ground to keep the outline crisp, but not so much
+   that the sky behind the page disappears. */
+body.halloween .shelf {
+  background: #12293ae0;
+}
