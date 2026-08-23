@@ -55,39 +55,62 @@ beforeEach(() => {
 
 describe('saving and loading', () => {
   it('brings a game back', () => {
-    saveGame(12, { answer: 'Ross', guesses: ['Amery', 'Getz'] }, store);
-    expect(loadGame(12, 'Ross', store)).toEqual({
+    saveGame(
+      12,
+      'normal',
+      { answer: 'Ross', guesses: ['Amery', 'Getz'] },
+      store,
+    );
+    expect(loadGame(12, 'normal', 'Ross', store)).toEqual({
       answer: 'Ross',
       guesses: ['Amery', 'Getz'],
     });
   });
 
   it('keeps each day separate', () => {
-    saveGame(12, { answer: 'Ross', guesses: ['Amery'] }, store);
-    expect(loadGame(13, 'Ross', store)).toBeNull();
+    saveGame(12, 'normal', { answer: 'Ross', guesses: ['Amery'] }, store);
+    expect(loadGame(13, 'normal', 'Ross', store)).toBeNull();
   });
 
   it('refuses a save for a different answer', () => {
     // The pool decides which shelf a day gets. If it changes, yesterday's
     // save would otherwise be restored against the wrong shelf.
-    saveGame(12, { answer: 'Ross', guesses: ['Amery'] }, store);
-    expect(loadGame(12, 'LarsenC', store)).toBeNull();
+    saveGame(12, 'normal', { answer: 'Ross', guesses: ['Amery'] }, store);
+    expect(loadGame(12, 'normal', 'LarsenC', store)).toBeNull();
   });
 
   it('has nothing to offer for a day never played', () => {
-    expect(loadGame(99, 'Ross', store)).toBeNull();
+    expect(loadGame(99, 'normal', 'Ross', store)).toBeNull();
+  });
+
+  it('keeps each level separate', () => {
+    // A player who switches to easy halfway through the daily and back again
+    // has to find their six-guess game still there. One save per day would
+    // have thrown it away.
+    saveGame(12, 'normal', { answer: 'Ross', guesses: ['Amery'] }, store);
+    saveGame(12, 'easy', { answer: 'Ross', guesses: ['Getz'] }, store);
+    expect(loadGame(12, 'normal', 'Ross', store)?.guesses).toEqual(['Amery']);
+    expect(loadGame(12, 'easy', 'Ross', store)?.guesses).toEqual(['Getz']);
+  });
+
+  it('reads a save written before levels existed', () => {
+    store.setItem(
+      'wordie:v1:puzzle:12',
+      JSON.stringify({ answer: 'Ross', guesses: ['Amery'] }),
+    );
+    expect(loadGame(12, 'normal', 'Ross', store)?.guesses).toEqual(['Amery']);
   });
 });
 
 describe('when the stored value cannot be trusted', () => {
   it('starts fresh rather than throwing on nonsense', () => {
     store.setItem('wordie:v1:puzzle:12', 'not json');
-    expect(loadGame(12, 'Ross', store)).toBeNull();
+    expect(loadGame(12, 'normal', 'Ross', store)).toBeNull();
   });
 
   it('rejects a save missing its guesses', () => {
     store.setItem('wordie:v1:puzzle:12', JSON.stringify({ answer: 'Ross' }));
-    expect(loadGame(12, 'Ross', store)).toBeNull();
+    expect(loadGame(12, 'normal', 'Ross', store)).toBeNull();
   });
 
   it('rejects guesses that are not names', () => {
@@ -95,7 +118,7 @@ describe('when the stored value cannot be trusted', () => {
       'wordie:v1:puzzle:12',
       JSON.stringify({ answer: 'Ross', guesses: [1, 2] }),
     );
-    expect(loadGame(12, 'Ross', store)).toBeNull();
+    expect(loadGame(12, 'normal', 'Ross', store)).toBeNull();
   });
 });
 
@@ -103,16 +126,16 @@ describe('when there is no storage to be had', () => {
   it('loads nothing rather than failing', () => {
     // A private window, or a browser told to block site data. Losing the
     // ability to save is a shame; failing to start is not acceptable.
-    expect(loadGame(12, 'Ross', null)).toBeNull();
-    expect(loadGame(12, 'Ross', hostile)).toBeNull();
+    expect(loadGame(12, 'normal', 'Ross', null)).toBeNull();
+    expect(loadGame(12, 'normal', 'Ross', hostile)).toBeNull();
   });
 
   it('saves nothing rather than failing', () => {
     expect(() =>
-      saveGame(12, { answer: 'Ross', guesses: [] }, null),
+      saveGame(12, 'normal', { answer: 'Ross', guesses: [] }, null),
     ).not.toThrow();
     expect(() =>
-      saveGame(12, { answer: 'Ross', guesses: [] }, hostile),
+      saveGame(12, 'normal', { answer: 'Ross', guesses: [] }, hostile),
     ).not.toThrow();
   });
 
@@ -124,22 +147,22 @@ describe('when there is no storage to be had', () => {
 
 describe('forgetOldGames', () => {
   it('drops saves more than a week old', () => {
-    saveGame(1, { answer: 'A', guesses: [] }, store);
-    saveGame(20, { answer: 'B', guesses: [] }, store);
-    saveGame(30, { answer: 'C', guesses: [] }, store);
+    saveGame(1, 'normal', { answer: 'A', guesses: [] }, store);
+    saveGame(20, 'normal', { answer: 'B', guesses: [] }, store);
+    saveGame(30, 'normal', { answer: 'C', guesses: [] }, store);
 
     forgetOldGames(30, store);
 
-    expect(loadGame(1, 'A', store)).toBeNull();
-    expect(loadGame(20, 'B', store)).toBeNull();
-    expect(loadGame(30, 'C', store)).not.toBeNull();
+    expect(loadGame(1, 'normal', 'A', store)).toBeNull();
+    expect(loadGame(20, 'normal', 'B', store)).toBeNull();
+    expect(loadGame(30, 'normal', 'C', store)).not.toBeNull();
   });
 
   it('removes several at once without losing count', () => {
     // Removing while iterating shifts the indices underneath, so the keys are
     // collected before any of them are deleted.
     for (let day = 1; day <= 10; day += 1) {
-      saveGame(day, { answer: 'A', guesses: [] }, store);
+      saveGame(day, 'normal', { answer: 'A', guesses: [] }, store);
     }
     forgetOldGames(50, store);
     expect(store.length).toBe(0);
@@ -149,6 +172,15 @@ describe('forgetOldGames', () => {
     store.setItem('someone-elses-key', 'keep me');
     forgetOldGames(1000, store);
     expect(store.getItem('someone-elses-key')).toBe('keep me');
+  });
+
+  it('drops an old save at any level', () => {
+    // The day is the leading digits of the key; a levelled key carries a
+    // suffix after it. Reading the whole tail as a number would leave every
+    // easy save in storage for ever.
+    saveGame(1, 'easy', { answer: 'A', guesses: [] }, store);
+    forgetOldGames(30, store);
+    expect(loadGame(1, 'easy', 'A', store)).toBeNull();
   });
 
   it('ignores a key it cannot read a day out of', () => {

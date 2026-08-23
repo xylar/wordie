@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SQUARES, shareText, squaresFor } from './share';
 import { createGame, submitGuess, type Game } from './game';
+import { EASY_GUESSES } from './pool';
 import type { ShelfFeature } from './shelves';
 
 const shelf = (key: string, lon: number, lat: number): ShelfFeature => ({
@@ -59,7 +60,11 @@ describe('squaresFor', () => {
 });
 
 describe('shareText', () => {
-  const options = { puzzle: 7, url: 'https://example.test/wordie/' };
+  const options = {
+    puzzle: 7,
+    url: 'https://example.test/wordie/',
+    level: 'normal' as const,
+  };
 
   it('leads with the puzzle and the score', () => {
     const game = played(ROSS, [AMERY, ROSS]);
@@ -109,5 +114,19 @@ describe('shareText', () => {
   it('ends with a link back to the game', () => {
     const game = played(ROSS, [ROSS]);
     expect(shareText(game, options).trimEnd().endsWith(options.url)).toBe(true);
+  });
+
+  it('says when the result was played on easy', () => {
+    // The shelf was the same one everybody else got, but a 1/2 next to
+    // somebody's 4/6 has to read as a different bargain rather than a rout,
+    // and the denominator alone is too quiet to carry that.
+    const game = [ROSS].reduce(submitGuess, createGame(ROSS, EASY_GUESSES));
+    const text = shareText(game, { ...options, level: 'easy' });
+    expect(text.split('\n')[0]).toBe('wordie #7 easy 1/2');
+  });
+
+  it('says nothing about the level on normal', () => {
+    const game = played(ROSS, [ROSS]);
+    expect(shareText(game, options).split('\n')[0]).toBe('wordie #7 1/6');
   });
 });

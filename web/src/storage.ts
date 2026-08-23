@@ -12,6 +12,8 @@
  * numbers forward.
  */
 
+import type { Level } from './pool';
+
 const KEY_PREFIX = 'wordie:v1:puzzle:';
 
 /** How many past days to keep before tidying up after ourselves. */
@@ -45,16 +47,32 @@ const storage = (): Storage | null => {
   }
 };
 
-const keyFor = (puzzle: number): string => `${KEY_PREFIX}${puzzle}`;
+/**
+ * Where one day's game lives.
+ *
+ * The level is part of the key, so a player who switches to easy halfway
+ * through the daily and then switches back finds their six-guess game still
+ * there. Storing one game per day and rejecting it on a level mismatch would
+ * have thrown the first one away, which is a worse thing to do to somebody
+ * than keeping two small strings.
+ *
+ * Normal keeps the bare key it has always had, so saves written before levels
+ * existed still load.
+ */
+const keyFor = (puzzle: number, level: Level): string =>
+  level === 'normal'
+    ? `${KEY_PREFIX}${puzzle}`
+    : `${KEY_PREFIX}${puzzle}:${level}`;
 
 export const saveGame = (
   puzzle: number,
+  level: Level,
   game: SavedGame,
   store: Storage | null = storage(),
 ): void => {
   if (!store) return;
   try {
-    store.setItem(keyFor(puzzle), JSON.stringify(game));
+    store.setItem(keyFor(puzzle, level), JSON.stringify(game));
   } catch {
     // A full quota is not worth interrupting a game over.
   }
@@ -62,12 +80,13 @@ export const saveGame = (
 
 export const loadGame = (
   puzzle: number,
+  level: Level,
   answer: string,
   store: Storage | null = storage(),
 ): SavedGame | null => {
   if (!store) return null;
   try {
-    const raw = store.getItem(keyFor(puzzle));
+    const raw = store.getItem(keyFor(puzzle, level));
     if (raw === null) return null;
     const saved = JSON.parse(raw) as Partial<SavedGame>;
     if (
@@ -98,7 +117,10 @@ export const forgetOldGames = (
     for (let i = 0; i < store.length; i += 1) {
       const key = store.key(i);
       if (key === null || !key.startsWith(KEY_PREFIX)) continue;
-      const day = Number(key.slice(KEY_PREFIX.length));
+      // Only the leading digits: a levelled key carries a `:easy` suffix
+      // after the day, and Number() of the whole tail is NaN, which would
+      // leave every easy save in storage for ever.
+      const day = Number(/^\d+/.exec(key.slice(KEY_PREFIX.length))?.[0]);
       if (Number.isFinite(day) && day < puzzle - KEEP_DAYS) stale.push(key);
     }
     // Collected first: removing while iterating shifts the indices underneath.

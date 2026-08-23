@@ -8,6 +8,7 @@
  */
 
 import type { Game, GuessResult } from './game';
+import type { Level } from './pool';
 
 /** How many squares make up a row. */
 export const SQUARES = 5;
@@ -35,6 +36,7 @@ export const squaresFor = (guess: GuessResult): string => {
 export interface ShareOptions {
   puzzle: number;
   url: string;
+  level: Level;
 }
 
 /**
@@ -43,10 +45,20 @@ export interface ShareOptions {
  * Deliberately without the shelf's name, and without the distances: a
  * kilometre figure would narrow the answer down for anyone who knows the
  * continent, which is exactly the audience this is for.
+ *
+ * Easy mode says so on the first line. The shelf was the same one everybody
+ * else got -- easy shortens the list of names, it does not change the day's
+ * puzzle -- but a 1/2 alongside somebody's 4/6 has to be legible as a
+ * different bargain rather than as a rout, and the denominator alone is too
+ * quiet to carry that.
  */
 export const shareText = (game: Game, options: ShareOptions): string => {
   const score = game.status === 'won' ? `${game.guesses.length}` : 'X';
-  const lines = [`wordie #${options.puzzle} ${score}/${game.maxGuesses}`, ''];
+  const level = options.level === 'normal' ? '' : `${options.level} `;
+  const lines = [
+    `wordie #${options.puzzle} ${level}${score}/${game.maxGuesses}`,
+    '',
+  ];
   for (const guess of game.guesses) {
     lines.push(`${squaresFor(guess)} ${guess.correct ? WON : guess.arrow}`);
   }

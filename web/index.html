@@ -33,10 +33,13 @@
           <button id="mode-daily" type="button">Today</button>
           <button id="mode-practice" type="button">Practice</button>
         </div>
-        <label class="hard-toggle" id="hard-label">
-          <input id="hard" type="checkbox" />
-          all 164 shelves
-        </label>
+        <div class="level-buttons" role="group" aria-label="Difficulty">
+          <button id="level-easy" type="button" data-level="easy">Easy</button>
+          <button id="level-normal" type="button" data-level="normal">
+            Normal
+          </button>
+          <button id="level-hard" type="button" data-level="hard">Hard</button>
+        </div>
       </div>
 
       <figure class="shelf">
@@ -65,6 +68,10 @@
         ></ul>
       </form>
 
+      <!-- Easy mode's closed list. Empty, and hidden by :empty, at every other
+           level, where guessing is open across all 164 shelves. -->
+      <ul id="choices" class="choices" aria-label="Choose an ice shelf"></ul>
+
       <p id="remaining" class="remaining" aria-live="polite"></p>
       <ol id="guesses" class="guesses"></ol>
       <p id="status" class="status" aria-live="polite"></p>
@@ -87,6 +94,13 @@
           answer and an arrow pointing the way a polar stereographic map does —
           not the way the great circle sets off, which near the pole can be the
           opposite direction.
+        </p>
+        <p>
+          Easy offers six names and allows two guesses. Hard draws practice
+          shelves from all 164 named shelves instead of the everyday 52. Today’s
+          shelf is the same one at every level — easy shortens the list of names
+          it could be, it does not change the puzzle — so a shared result says
+          which level it was played at.
         </p>
         <p>
           The shapes are not drawn by hand. They are traced from the
