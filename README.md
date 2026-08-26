@@ -96,8 +96,8 @@ than 165.
 
 ## Playing
 
-Six guesses. Every wrong one reports how far the shelf you named is from the
-answer, and an arrow pointing towards it.
+Six names to choose between, and two guesses. Every wrong one reports how far
+the shelf you named is from the answer, and an arrow pointing towards it.
 
 The answer comes from an everyday pool of 52: the 50 largest shelves, plus
 Wordie and Larsen A. Ranking by area turns out to be a good stand-in for fame —
@@ -106,9 +106,6 @@ VI, Wilkins, Pine Island, Thwaites, Getz, Totten and the Dronning Maud Land
 chain — and it misses in exactly one way, which is that it cannot see a shelf
 famous for having gone. Wordie disintegrated by 2004 and Larsen A in 1995; both
 are far too small to qualify on area and far too well known to leave out.
-
-Guessing, though, is open across all 164 named shelves. A wrong guess is only
-worth making if it can tell you where you are.
 
 The puzzle is the same for everyone on a given UTC day — the players this is
 for are spread across every longitude by profession — and every shelf in the
@@ -120,34 +117,108 @@ without saying what the answer was.
 
 ### Levels
 
-**Easy** names six candidates and allows two guesses at them. Six against the
-everyday 52: a blind pick wins one game in six, and a second guess informed by
-the first one's distance and arrow wins better than one in three before any
-knowledge of the continent comes into it at all. Two guesses rather than six,
-because six guesses at six names is not a puzzle — the last one is right by
-elimination and the arrows stop mattering.
+Four rungs, and three different kinds of help, which is why they are not
+simply four different numbers of guesses.
 
-**Normal** is the game above: six guesses, open across all 164 names.
+| | names offered | guesses | drawn in its surroundings | answer drawn from |
+| --- | --- | ---: | --- | --- |
+| **Easy** | six | 2 | yes | the everyday 52 |
+| **Medium** | six | 2 | no | the everyday 52 |
+| **Hard** | all 164 | 6 | no | the everyday 52 |
+| **Insane** | all 164 | 6 | no | all 164 |
 
-**Hard** draws the shelf from all 164 rather than the everyday 52.
+**Medium is where a player starts**, and that is a deliberate choice about how
+hard this game actually is. Recognising a shape you have only ever seen at the
+scale of a continent, drawn alone with the scale withheld, is most of the
+difficulty; six names to choose between does not give that away, it only says
+which shapes it might be. Six against the everyday 52: a blind pick wins one
+game in six, and a second guess informed by the first one's distance and arrow
+wins better than one in three before any knowledge of the continent comes into
+it at all. Two guesses rather than six, because six guesses at six names is not
+a puzzle — the last one is right by elimination and the arrows stop mattering.
 
-Hard deliberately does not touch the daily round. If it changed which shelf the
-day got, two people comparing results would be comparing different puzzles, and
-the shared grid would quietly stop meaning anything.
+**Easy** adds the one hint that is about the ice rather than about the list of
+names: the shelf is drawn in its surroundings, with the land it is grounded
+against filled in and the sea left open. An outline alone withholds which of
+its edges is the calving front and which is the grounding line, and that is
+most of what a glaciologist reads a shelf by — Ross is a blunt front across the
+bottom of a coast that wraps round everything else, Amery is a tongue gripped
+down both sides, George VI is a channel with open water at each end and rock
+the whole way along. Filling in the land makes that argument in one glance,
+and for someone who knows the coast it can give the answer outright. See
+[What is around a shelf](#what-is-around-a-shelf).
 
-Easy is allowed there, and the same rule is why. It does not change which shelf
-the day gets — everyone on every level is naming the same outline — it only
-shortens the list of names offered for it. The day's six are drawn from the
-puzzle number rather than at random, so two players on easy are choosing from
-the same list, and the shared line says which level it was played at:
+**Hard** opens the guessing to all 164 named shelves, with six guesses to
+spend finding one. A wrong guess is only worth making if it can tell you where
+you are, and with 164 names to reach for it usually can.
+
+**Insane** draws the answer from all 164 as well, so the shelf can be a 20 km
+inlet nobody outside one field season has heard of.
+
+Insane deliberately does not touch the daily round. If it changed which shelf
+the day got, two people comparing results would be comparing different puzzles,
+and the shared grid would quietly stop meaning anything.
+
+The other three are allowed there, and the same rule is why. None of them
+changes which shelf the day gets — everyone on every level is naming the same
+outline — they change only how much help there is in naming it. The day's six
+names are drawn from the puzzle number rather than at random, so two players on
+the same rung are choosing from the same list, and the shared line says which
+rung it was:
 
 ```
+wordie #7 1/2
 wordie #7 easy 1/2
-wordie #7 4/6
+wordie #7 hard 4/6
 ```
+
+Medium goes unmarked, because it is where a player starts: an unlabelled line
+is the ordinary game.
 
 Each level keeps its own save for the day, so switching does not throw away a
 game in progress.
+
+## What is around a shelf
+
+BedMachine's mask has five values and the pipeline traces one of them. The
+other four are the surroundings, on the same grid as the shape they surround:
+`grounded_ice`, `ice_free_land` and `lake_vostok` are land in the sense that
+matters here — ice or rock sitting on the bed — and `ocean` is the sea. So for
+each shelf the pipeline cuts a square of the mask around it and turns those
+into polygons of their own.
+
+Two layers are shipped, not three. **Land** is anything resting on the bed.
+**Ice** is floating ice that is not this shelf — the neighbour across a cut,
+Ronne beside Filchner, which is neither land nor sea and would be a lie drawn
+as either. Thirty of the 164 shelves have one. Open water is the third and
+costs nothing: it is whatever is neither, and the game draws it by leaving the
+frame's own ground showing, which is already the colour of deep water.
+
+The square is 1.15 times the shelf's own longest side, and that is what keeps
+the scale withheld. The game scales every shelf to fill the same frame, so
+Ross and Rydberg Peninsula are the same size on screen; scaling each shelf's
+surroundings by the same number keeps it that way. A window of fixed width in
+kilometres would have said how big the shelf was before the player had named
+anything.
+
+The surroundings are simplified far more coarsely than the outlines — two
+pixels against a twentieth of one — and pieces under about six pixels across
+are dropped outright. The outline is what the player is being asked to
+recognise; a headland fifty kilometres inland is doing its work at a glance or
+not at all, and the coast off an ice front is speckled with rocks and grounded
+bergs a cell or two across that are dirt on the screen and a third of the
+vertices in the file. Even so this is the most expensive thing in the payload
+after the outlines themselves: 20,968 vertices against 28,711, which takes the
+file from 540 kB to 923 kB and what crosses the wire from 111 kB to 174 kB
+gzipped. It buys the one hint that is about the ice rather than about the
+list of names.
+
+They are drawn under the outline and clipped by the frame, with straight
+segments where the outline is drawn as curves. That is not an oversight: the
+surroundings are cut off at the edge of a square, and by the time the
+coordinates reach the browser the corner of that square is indistinguishable
+from a headland. Rounding one rounds the other, and a corner-cut through a
+corner with two enormously long sides swings half way across the picture.
 
 ## How a guess is scored
 
@@ -162,8 +233,10 @@ bearing matches the mental map the player is working from.
 
 ## What the browser downloads
 
-`web/src/data/shelves.geojson` holds all 164 outlines: 540 kB, and about
-85 kB over the wire once the server compresses it. It is imported rather than
+`web/src/data/shelves.geojson` holds all 164 outlines and the surroundings
+easy mode draws them in: 923 kB, which is 115 kB compressed with Brotli and
+174 kB with gzip. The outlines alone are 540 kB of that; see
+[What is around a shelf](#what-is-around-a-shelf) for the rest. It is imported rather than
 served from `public/`, so the build gives it a content hash — under a fixed
 name a returning player keeps whatever their browser cached, which is how a
 round of outline fixes once reached the deployed site and not the people

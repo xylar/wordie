@@ -73,12 +73,17 @@ def _affine_from_centres(
     return Affine(dx, 0.0, west, 0.0, dy, north)
 
 
-def read_floating_mask(path: Path | str) -> tuple[NDArray[np.bool_], Affine]:
-    """Read floating ice from a BedMachine file.
+def read_mask(path: Path | str) -> tuple[NDArray[np.int8], Affine]:
+    """Read the whole `mask` field from a BedMachine file.
 
-    Returns the boolean mask and the affine transform placing it in EPSG:3031,
-    which is the grid BedMachine is already on -- no resampling happens here,
-    and the outlines that come out sit exactly on cell edges of the source.
+    Returns the values as the file has them and the affine transform placing
+    them in EPSG:3031, which is the grid BedMachine is already on -- no
+    resampling happens here, and the outlines that come out sit exactly on
+    cell edges of the source.
+
+    The classes other than floating ice are not waste. Which of them lies
+    across a boundary is what says whether that boundary is a calving front or
+    a grounding line; see `margins.py`.
     """
     with xr.open_dataset(path) as dataset:
         if 'mask' not in dataset:
@@ -87,8 +92,14 @@ def read_floating_mask(path: Path | str) -> tuple[NDArray[np.bool_], Affine]:
             )
         mask = dataset['mask']
         _check_flag_meanings(mask)
-        values = mask.values
+        values = np.asarray(mask.values)
         transform = _affine_from_centres(
             dataset['x'].values, dataset['y'].values
         )
+    return values, transform
+
+
+def read_floating_mask(path: Path | str) -> tuple[NDArray[np.bool_], Affine]:
+    """Read floating ice from a BedMachine file, as a boolean mask."""
+    values, transform = read_mask(path)
     return np.asarray(values == FLOATING_ICE), transform

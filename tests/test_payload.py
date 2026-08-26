@@ -2,9 +2,13 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
 import pytest
+from affine import Affine
 from shapely.geometry import MultiPolygon, Polygon, box
 
+from wordie.context import MaskGrid
+from wordie.outlines import polygonize_floating_ice
 from wordie.payload import (
     CRS_NAME,
     MAX_FLOOR_FRACTION,
@@ -13,7 +17,7 @@ from wordie.payload import (
     display_tolerance,
     simplify_for_display,
 )
-from wordie.projections import area_km2, centroid_lonlat
+from wordie.projections import area_km2, centroid_lonlat, extent_of
 from wordie.shelves import Shelf
 
 
@@ -268,3 +272,74 @@ class TestSourceGridFloor:
     def test_the_floor_wins_on_a_small_one(self) -> None:
         # Larsen B is 63.5 km across, where half a pixel is only 64 m.
         assert display_tolerance(63_500.0, 63_500.0) == pytest.approx(500.0)
+
+
+class TestSurroundings:
+    """What the payload says about the world around a shelf."""
+
+    @staticmethod
+    def shelf_against_land() -> tuple[Shelf, MaskGrid]:
+        """A shelf with the sea to its north and grounded ice to its south."""
+        cell = 500.0
+        north = 1.0e6
+        values = np.zeros((40, 40), dtype=np.int8)
+        values[20:, :] = 2
+        values[10:25, 5:35] = 3
+        transform = Affine(cell, 0, 0, 0, -cell, north)
+        mask = MaskGrid(values, transform)
+
+        floating = polygonize_floating_ice(
+            values == 3, transform, min_area_km2=0.0
+        )
+        return make_shelf('Test', floating[0].geometry), mask
+
+    def test_are_written_in_the_same_coordinates_as_the_outline(self) -> None:
+        shelf, mask = self.shelf_against_land()
+
+        payload, stats = build_payload([shelf], mask=mask)
+        context = payload['features'][0]['properties']['context']
+
+        assert context['land']
+        # Whole metres in the map plane, exactly like the geometry: the game
+        # scales both by the same numbers, and a second convention here would
+        # put the land somewhere else on the page than the shelf it surrounds.
+        for polygon in context['land']:
+            for ring in polygon:
+                for x, y in ring:
+                    assert isinstance(x, int) and isinstance(y, int)
+        assert stats.context_vertex_count > 0
+
+    def test_reach_past_the_edge_of_the_frame(self) -> None:
+        # The land has to run off the side of the box. Stopping short of it
+        # would draw a coastline with a bare margin outside, which reads as a
+        # shape of its own rather than as the edge of the picture.
+        shelf, mask = self.shelf_against_land()
+        drawn = max(extent_of(shelf.geometry))
+
+        payload, _stats = build_payload([shelf], mask=mask)
+        land = payload['features'][0]['properties']['context']['land']
+        xs = [x for polygon in land for ring in polygon for x, _y in ring]
+        shelf_min, _y0, shelf_max, _y1 = shelf.geometry.bounds
+
+        assert min(xs) < shelf_min - 0.04 * drawn
+        assert max(xs) > shelf_max + 0.04 * drawn
+
+    def test_leave_the_shelf_itself_out_of_the_ice_around_it(self) -> None:
+        # The shelf is floating ice in the middle of its own frame. Left in,
+        # it would be a second copy of the outline drawn underneath the real
+        # one, in the colour the game uses for somebody else's shelf.
+        shelf, mask = self.shelf_against_land()
+
+        payload, _stats = build_payload([shelf], mask=mask)
+
+        assert payload['features'][0]['properties']['context']['ice'] == []
+
+    def test_are_left_out_when_there_is_no_mask_to_trace_them_from(
+        self,
+    ) -> None:
+        shelf, _mask = self.shelf_against_land()
+
+        payload, stats = build_payload([shelf])
+
+        assert 'context' not in payload['features'][0]['properties']
+        assert stats.context_vertex_count == 0

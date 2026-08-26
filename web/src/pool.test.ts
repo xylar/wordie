@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
-  EASY_CHOICES,
+  OFFERED_NAMES,
   answerPool,
   choiceSet,
   guessesFor,
+  offersNames,
+  showsSurroundings,
   poolFor,
 } from './pool';
 import type { ShelfFeature } from './shelves';
@@ -40,23 +42,45 @@ const walking = (start = 0.13, step = 0.37): (() => number) => {
 };
 
 describe('which shelves a level plays with', () => {
-  it('widens the answer pool only on hard', () => {
+  it('widens the answer pool only on insane', () => {
+    // The line that matters for the daily round: every other level plays the
+    // same shelf as everybody else and differs only in the help it gives.
     expect(poolFor('easy')).toBe('major');
-    expect(poolFor('normal')).toBe('major');
-    expect(poolFor('hard')).toBe('all');
+    expect(poolFor('medium')).toBe('major');
+    expect(poolFor('hard')).toBe('major');
+    expect(poolFor('insane')).toBe('all');
   });
 
-  it('shortens the guesses only on easy', () => {
+  it('shortens the guesses exactly where it shortens the list', () => {
+    // Two guesses is not a separate decision from six names: six guesses at
+    // six names is a list being read out.
     expect(guessesFor('easy', 6)).toBe(2);
-    expect(guessesFor('normal', 6)).toBe(6);
+    expect(guessesFor('medium', 6)).toBe(2);
     expect(guessesFor('hard', 6)).toBe(6);
+    expect(guessesFor('insane', 6)).toBe(6);
+  });
+
+  it('closes the list of names on the two lower rungs', () => {
+    expect(offersNames('easy')).toBe(true);
+    expect(offersNames('medium')).toBe(true);
+    expect(offersNames('hard')).toBe(false);
+    expect(offersNames('insane')).toBe(false);
+  });
+
+  it('draws the surroundings on easy alone', () => {
+    // The largest single piece of help in the game, and so the first thing
+    // the ladder takes away: medium is easy with the map switched off.
+    expect(showsSurroundings('easy')).toBe(true);
+    expect(showsSurroundings('medium')).toBe(false);
+    expect(showsSurroundings('hard')).toBe(false);
+    expect(showsSurroundings('insane')).toBe(false);
   });
 });
 
-describe('the easy-mode choice set', () => {
+describe('the closed list of names', () => {
   it('is six names including the answer', () => {
     const choices = choiceSet(POOL, ANSWER, walking());
-    expect(choices).toHaveLength(EASY_CHOICES);
+    expect(choices).toHaveLength(OFFERED_NAMES);
     expect(choices.map((s) => s.properties.key)).toContain(
       ANSWER.properties.key,
     );
@@ -110,7 +134,7 @@ describe('the easy-mode choice set', () => {
     // implementation need not be, and an out-of-range index here would put an
     // undefined among the names on screen.
     const choices = choiceSet(POOL, ANSWER, () => 1);
-    expect(choices).toHaveLength(EASY_CHOICES);
+    expect(choices).toHaveLength(OFFERED_NAMES);
     expect(choices.every(Boolean)).toBe(true);
   });
 });

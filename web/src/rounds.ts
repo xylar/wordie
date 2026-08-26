@@ -13,18 +13,27 @@
  *
  * So hard mode lives in practice, where nobody is comparing anything.
  *
- * Easy mode is allowed on the daily, and the rule above is why. It does not
- * change which shelf the day gets; it shortens the list of names offered for
- * it and the number of guesses allowed. Everyone is still playing the same
- * shelf. The shared line carries the level so that a 1/2 is not read as a 1/6,
- * and the day's six names are drawn from the puzzle number rather than at
- * random, so that two people on easy really are choosing from the same list.
+ * The other three levels are allowed on the daily, and the rule above is why.
+ * None of them changes which shelf the day gets; they shorten the list of
+ * names offered for it, the number of guesses allowed, and whether the shelf
+ * is drawn in its surroundings. Everyone is still playing the same shelf. The
+ * shared line carries the level so that a 1/2 is not read as a 1/6, and the
+ * day's six names are drawn from the puzzle number rather than at random, so
+ * that two people on the same rung really are choosing from the same list.
  */
 
 import { dailyRandom, shelfForDate } from './daily';
 import { MAX_GUESSES } from './game';
 import { halloweenShelf } from './halloween';
-import { answerPool, choiceSet, guessesFor, poolFor, type Level } from './pool';
+import {
+  answerPool,
+  choiceSet,
+  guessesFor,
+  offersNames,
+  poolFor,
+  showsSurroundings,
+  type Level,
+} from './pool';
 import type { ShelfFeature } from './shelves';
 
 export type Mode = 'daily' | 'practice';
@@ -34,9 +43,11 @@ export interface Round {
   level: Level;
   /**
    * The names the player may pick from, or null when guessing is open across
-   * all 164 shelves. Only easy mode closes it.
+   * all 164 shelves. Easy and medium close it.
    */
   choices: ShelfFeature[] | null;
+  /** Whether to draw the shelf in its surroundings. Easy alone. */
+  surroundings: boolean;
   maxGuesses: number;
   /** Only a daily round is saved; a practice round is meant to be thrown away. */
   persist: boolean;
@@ -54,12 +65,12 @@ export interface Round {
  * a joke.
  *
  * It is still an ordinary daily round: the same pool, saved the same way, and
- * easy mode still allowed to shorten the list of names offered for it.
+ * the easier levels still allowed to shorten the list of names offered for it.
  */
 export const dailyRound = (
   shelves: ShelfFeature[],
   date: Date,
-  level: Level = 'normal',
+  level: Level = 'medium',
   puzzle = 0,
 ): Round | null => {
   const pool = answerPool(shelves, 'major');
@@ -68,8 +79,10 @@ export const dailyRound = (
   return {
     answer,
     level,
-    choices:
-      level === 'easy' ? choiceSet(pool, answer, dailyRandom(puzzle)) : null,
+    choices: offersNames(level)
+      ? choiceSet(pool, answer, dailyRandom(puzzle))
+      : null,
+    surroundings: showsSurroundings(level),
     maxGuesses: guessesFor(level, MAX_GUESSES),
     persist: true,
   };
@@ -107,7 +120,8 @@ export const practiceRound = (
     // Drawn from the whole pool, not from `choices`: the shelf just played is
     // kept out of the *answer* draw, but it is a perfectly good distractor and
     // leaving it out would make its absence a tell.
-    choices: level === 'easy' ? choiceSet(pool, answer, random) : null,
+    choices: offersNames(level) ? choiceSet(pool, answer, random) : null,
+    surroundings: showsSurroundings(level),
     maxGuesses: guessesFor(level, MAX_GUESSES),
     persist: false,
   };

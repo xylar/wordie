@@ -4,8 +4,8 @@ import { shelfForDate } from './daily';
 import { HALLOWEEN_KEY, isHalloween } from './halloween';
 import {
   answerPool,
-  EASY_CHOICES,
-  EASY_GUESSES,
+  OFFERED_NAMES,
+  OFFERED_GUESSES,
   MAJOR_POOL_SIZE,
   NOTABLE_KEYS,
 } from './pool';
@@ -75,13 +75,13 @@ describe('the daily round', () => {
   });
 
   it('is the same shelf at every level', () => {
-    // The whole reason easy is allowed here and hard is not. Easy shortens
+    // The whole reason easy is allowed here and insane is not. Easy shortens
     // the list of names offered for the day's shelf; it does not change which
     // shelf the day gets, so two people on different levels are still playing
     // the same puzzle.
-    const normal = dailyRound(SHELVES, date, 'normal', 11);
+    const open = dailyRound(SHELVES, date, 'hard', 11);
     const easy = dailyRound(SHELVES, date, 'easy', 11);
-    expect(easy?.answer.properties.key).toBe(normal?.answer.properties.key);
+    expect(easy?.answer.properties.key).toBe(open?.answer.properties.key);
   });
 
   it('offers everyone the same six names on the same day', () => {
@@ -92,7 +92,7 @@ describe('the daily round', () => {
         (shelf) => shelf.properties.key,
       ) ?? [];
     expect(names(11)).toEqual(names(11));
-    expect(names(11).length).toBe(EASY_CHOICES);
+    expect(names(11).length).toBe(OFFERED_NAMES);
   });
 
   it('does not offer the same six two days running', () => {
@@ -107,19 +107,38 @@ describe('the daily round', () => {
       );
     for (let day = 0; day < 30; day += 1) {
       const shared = [...names(day)].filter((key) => names(day + 1).has(key));
-      expect(shared.length).toBeLessThan(EASY_CHOICES);
+      expect(shared.length).toBeLessThan(OFFERED_NAMES);
     }
   });
 
-  it('leaves guessing open above easy', () => {
-    expect(dailyRound(SHELVES, date, 'normal', 11)?.choices).toBeNull();
+  it('draws the surroundings on easy and nowhere else', () => {
+    // The one piece of help that is about the ice rather than the list of
+    // names, and the top rung of the ladder.
+    expect(dailyRound(SHELVES, date, 'easy', 11)?.surroundings).toBe(true);
+    expect(dailyRound(SHELVES, date, 'medium', 11)?.surroundings).toBe(false);
+    expect(dailyRound(SHELVES, date, 'hard', 11)?.surroundings).toBe(false);
   });
 
-  it('allows two guesses on easy and six otherwise', () => {
-    expect(dailyRound(SHELVES, date, 'easy', 11)?.maxGuesses).toBe(
-      EASY_GUESSES,
+  it('offers the same six names on easy and medium', () => {
+    // Medium is easy with the map switched off, so the list it is choosing
+    // from has to be the same list.
+    const easy = dailyRound(SHELVES, date, 'easy', 11)?.choices;
+    const medium = dailyRound(SHELVES, date, 'medium', 11)?.choices;
+
+    expect(medium?.map((s) => s.properties.key)).toEqual(
+      easy?.map((s) => s.properties.key),
     );
-    expect(dailyRound(SHELVES, date, 'normal', 11)?.maxGuesses).toBe(6);
+  });
+
+  it('leaves guessing open above medium', () => {
+    expect(dailyRound(SHELVES, date, 'hard', 11)?.choices).toBeNull();
+  });
+
+  it('allows two guesses on the closed lists and six otherwise', () => {
+    expect(dailyRound(SHELVES, date, 'easy', 11)?.maxGuesses).toBe(
+      OFFERED_GUESSES,
+    );
+    expect(dailyRound(SHELVES, date, 'hard', 11)?.maxGuesses).toBe(6);
   });
 });
 
@@ -162,15 +181,15 @@ describe('Halloween', () => {
 
 describe('a practice round', () => {
   it('is not saved', () => {
-    expect(practiceRound(SHELVES, 'normal', () => 0)?.persist).toBe(false);
+    expect(practiceRound(SHELVES, 'hard', () => 0)?.persist).toBe(false);
   });
 
   it('draws from the everyday pool by default', () => {
     const keys = new Set<string>();
     for (let i = 0; i < 200; i += 1) {
       keys.add(
-        practiceRound(SHELVES, 'normal', () => i / 200)?.answer.properties
-          .key ?? '',
+        practiceRound(SHELVES, 'hard', () => i / 200)?.answer.properties.key ??
+          '',
       );
     }
     expect(keys.size).toBe(MAJOR_TOTAL);
@@ -181,8 +200,8 @@ describe('a practice round', () => {
     const keys = new Set<string>();
     for (let i = 0; i < 400; i += 1) {
       keys.add(
-        practiceRound(SHELVES, 'hard', () => i / 400)?.answer.properties.key ??
-          '',
+        practiceRound(SHELVES, 'insane', () => i / 400)?.answer.properties
+          .key ?? '',
       );
     }
     expect(keys.size).toBe(SHELVES.length);
@@ -191,10 +210,10 @@ describe('a practice round', () => {
 
   it('never deals the shelf just played', () => {
     // Pressing the button again has to change something, or it looks broken.
-    const first = practiceRound(SHELVES, 'normal', () => 0);
+    const first = practiceRound(SHELVES, 'hard', () => 0);
     const avoid = first?.answer.properties.key;
     for (let i = 0; i < 100; i += 1) {
-      const next = practiceRound(SHELVES, 'normal', () => i / 100, avoid);
+      const next = practiceRound(SHELVES, 'hard', () => i / 100, avoid);
       expect(next?.answer.properties.key).not.toBe(avoid);
     }
   });
@@ -202,7 +221,7 @@ describe('a practice round', () => {
   it('still deals something when there is only one shelf to deal', () => {
     const only = [shelf('Ross', 1)];
     expect(
-      practiceRound(only, 'hard', () => 0, 'Ross')?.answer.properties.key,
+      practiceRound(only, 'insane', () => 0, 'Ross')?.answer.properties.key,
     ).toBe('Ross');
   });
 
@@ -221,7 +240,7 @@ describe('a practice round', () => {
   it('offers a closed list on easy, and the answer is in it', () => {
     for (let i = 0; i < 100; i += 1) {
       const round = practiceRound(SHELVES, 'easy', () => i / 100);
-      expect(round?.choices).toHaveLength(EASY_CHOICES);
+      expect(round?.choices).toHaveLength(OFFERED_NAMES);
       expect(
         round?.choices?.some(
           (shelf) => shelf.properties.key === round.answer.properties.key,

@@ -80,11 +80,12 @@ export const shelfForDate = (
 };
 
 /**
- * A fixed random source for one day's easy-mode choices.
+ * A fixed random source for one day's six names.
  *
- * Easy mode has to offer everyone the same six names on the same day, for the
- * same reason everyone gets the same shelf: a result of 1/2 means nothing next
- * to someone else's if the two players were choosing from different lists.
+ * A level that closes the list has to offer everyone the same six names on the
+ * same day, for the same reason everyone gets the same shelf: a result of 1/2
+ * means nothing next to someone else's if the two players were choosing from
+ * different lists.
  *
  * The puzzle number is scrambled by the golden-ratio constant before seeding.
  * Consecutive days are consecutive integers, and feeding those straight in

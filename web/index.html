@@ -35,19 +35,39 @@
         </div>
         <div class="level-buttons" role="group" aria-label="Difficulty">
           <button id="level-easy" type="button" data-level="easy">Easy</button>
-          <button id="level-normal" type="button" data-level="normal">
-            Normal
+          <button id="level-medium" type="button" data-level="medium">
+            Medium
           </button>
           <button id="level-hard" type="button" data-level="hard">Hard</button>
+          <button id="level-insane" type="button" data-level="insane">
+            Insane
+          </button>
         </div>
       </div>
 
       <figure class="shelf">
         <svg viewBox="0 0 100 100" role="img" aria-label="Ice shelf outline">
+          <!-- Easy mode's hint, and empty at every other level: what the
+               mask has around the shelf. Drawn before the outline so that the
+               shelf sits on top of its own surroundings, and clipped by the
+               viewBox, which is why the land runs off the edge of the frame
+               rather than stopping short of it. Open water is neither path --
+               it is the frame's own ground, showing through. -->
+          <g class="surroundings" aria-hidden="true">
+            <path id="context-land" fill-rule="evenodd" />
+            <path id="context-ice" fill-rule="evenodd" />
+          </g>
           <path id="outline" fill-rule="evenodd" />
         </svg>
         <figcaption id="reveal"></figcaption>
       </figure>
+
+      <!-- What the shading means. Shown only when there is shading. -->
+      <p id="context-key" class="context-key" hidden>
+        <span class="key-land">grounded</span>
+        <span class="key-ocean">open ocean</span>
+        <span id="key-ice" class="key-ice" hidden>another shelf</span>
+      </p>
 
       <form id="guess-form" autocomplete="off">
         <label class="visually-hidden" for="guess-input">
@@ -68,8 +88,8 @@
         ></ul>
       </form>
 
-      <!-- Easy mode's closed list. Empty, and hidden by :empty, at every other
-           level, where guessing is open across all 164 shelves. -->
+      <!-- The closed list easy and medium offer. Empty, and hidden by :empty,
+           at the two levels where guessing is open across all 164 shelves. -->
       <ul id="choices" class="choices" aria-label="Choose an ice shelf"></ul>
 
       <p id="remaining" class="remaining" aria-live="polite"></p>
@@ -89,18 +109,22 @@
       <dialog id="about">
         <h2>About wordie</h2>
         <p>
-          Six guesses at an Antarctic ice shelf, shown by its outline with the
-          scale withheld. A wrong guess reports the geodesic distance to the
-          answer and an arrow pointing the way a polar stereographic map does —
-          not the way the great circle sets off, which near the pole can be the
-          opposite direction.
+          Name an Antarctic ice shelf from its outline, with the scale withheld.
+          A wrong guess reports the geodesic distance to the answer and an arrow
+          pointing the way a polar stereographic map does — not the way the
+          great circle sets off, which near the pole can be the opposite
+          direction.
         </p>
         <p>
-          Easy offers six names and allows two guesses. Hard draws practice
-          shelves from all 164 named shelves instead of the everyday 52. Today’s
-          shelf is the same one at every level — easy shortens the list of names
-          it could be, it does not change the puzzle — so a shared result says
-          which level it was played at.
+          Easy offers six names, allows two guesses, and shades the outline to
+          say which of its edges face open water and which are grounded against
+          rock or ice sitting on it — the difference between a calving front and
+          a grounding line, which BedMachine’s mask knows for every edge of
+          every shelf. Hard draws practice shelves from all 164 named shelves
+          instead of the everyday 52. Today’s shelf is the same one at every
+          level — easy shortens the list of names it could be, it does not
+          change the puzzle — so a shared result says which level it was played
+          at.
         </p>
         <p>
           The shapes are not drawn by hand. They are traced from the

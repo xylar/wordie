@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  drawOutline,
   findElements,
   renderChoices,
   renderMode,
@@ -9,13 +10,34 @@ import {
   type Elements,
 } from './ui';
 import { createGame, submitGuess, type Game } from './game';
-import { EASY_CHOICES, EASY_GUESSES } from './pool';
+import { OFFERED_GUESSES, OFFERED_NAMES } from './pool';
 import type { Round } from './rounds';
 import type { ShelfFeature } from './shelves';
 
 const shelf = (key: string, lon = 0): ShelfFeature => ({
   type: 'Feature',
-  properties: { key, name: key, area_km2: 1000, lon, lat: -70 },
+  properties: {
+    key,
+    name: key,
+    area_km2: 1000,
+    lon,
+    lat: -70,
+    // A square of land off one side, as the pipeline would have traced it.
+    context: {
+      land: [
+        [
+          [
+            [2, 0],
+            [3, 0],
+            [3, 1],
+            [2, 1],
+            [2, 0],
+          ],
+        ],
+      ],
+      ice: [],
+    },
+  },
   geometry: {
     type: 'MultiPolygon',
     coordinates: [
@@ -24,6 +46,8 @@ const shelf = (key: string, lon = 0): ShelfFeature => ({
           [0, 0],
           [1, 0],
           [1, 1],
+          [0, 1],
+          [0, 0],
         ],
       ],
     ],
@@ -38,6 +62,9 @@ const ANSWER = CHOICES[4] as ShelfFeature;
 /** Enough of the page for the renderers to write into. */
 const page = `
   <path id="outline"></path>
+  <path id="context-land"></path>
+  <path id="context-ice"></path>
+  <p id="context-key" hidden><span id="key-ice" hidden></span></p>
   <p id="reveal"></p>
   <form id="guess-form"><input id="guess-input" /><ul id="suggestions"></ul></form>
   <ul id="choices"></ul>
@@ -49,22 +76,25 @@ const page = `
   <button id="mode-practice"></button>
   <div class="level-buttons">
     <button data-level="easy"></button>
-    <button data-level="normal"></button>
+    <button data-level="medium"></button>
     <button data-level="hard"></button>
+    <button data-level="insane"></button>
   </div>`;
 
 const easyRound = (): Round => ({
   answer: ANSWER,
   level: 'easy',
   choices: CHOICES,
-  maxGuesses: EASY_GUESSES,
+  surroundings: true,
+  maxGuesses: OFFERED_GUESSES,
   persist: true,
 });
 
 const openRound = (): Round => ({
   answer: ANSWER,
-  level: 'normal',
+  level: 'hard',
   choices: null,
+  surroundings: false,
   maxGuesses: 6,
   persist: true,
 });
@@ -80,9 +110,63 @@ beforeEach(() => {
   expect(elements).not.toBeNull();
 });
 
+describe('the surroundings under the outline', () => {
+  it('are drawn on easy, with a key saying what they are', () => {
+    drawOutline(elements, ANSWER, true);
+
+    expect(elements.land.getAttribute('d')).toBeTruthy();
+    expect(elements.contextKey.hidden).toBe(false);
+  });
+
+  it('name a neighbouring shelf only when there is one', () => {
+    // Most shelves are a body of ice on their own, and a key entry for a
+    // colour that is not on the page is a colour the player hunts for.
+    drawOutline(elements, ANSWER, true);
+    expect(elements.iceKey.hidden).toBe(true);
+
+    const neighboured = shelf('Filchner');
+    neighboured.properties.context = {
+      land: [],
+      ice: [
+        [
+          [
+            [2, 0],
+            [3, 0],
+            [3, 1],
+            [2, 1],
+            [2, 0],
+          ],
+        ],
+      ],
+    };
+    drawOutline(elements, neighboured, true);
+
+    expect(elements.iceKey.hidden).toBe(false);
+  });
+
+  it('are left off at every other level', () => {
+    // The hint is the level's, not the shelf's: the same outline is drawn
+    // without it on normal and hard.
+    drawOutline(elements, ANSWER, true);
+    drawOutline(elements, ANSWER, false);
+
+    expect(elements.land.getAttribute('d')).toBe('');
+    expect(elements.ice.getAttribute('d')).toBe('');
+    expect(elements.contextKey.hidden).toBe(true);
+  });
+
+  it('leave the outline itself alone either way', () => {
+    drawOutline(elements, ANSWER, false);
+    const plain = elements.outline.getAttribute('d');
+    drawOutline(elements, ANSWER, true);
+
+    expect(elements.outline.getAttribute('d')).toBe(plain);
+  });
+});
+
 describe('the easy-mode choice list', () => {
   it('shows the names instead of the text input', () => {
-    const game = createGame(ANSWER, EASY_GUESSES);
+    const game = createGame(ANSWER, OFFERED_GUESSES);
     renderChoices(elements, easyRound(), game, () => undefined);
 
     expect(elements.form.hidden).toBe(true);
@@ -96,7 +180,7 @@ describe('the easy-mode choice list', () => {
     renderChoices(
       elements,
       easyRound(),
-      createGame(ANSWER, EASY_GUESSES),
+      createGame(ANSWER, OFFERED_GUESSES),
       onPick,
     );
     buttons()[1]?.click();
@@ -107,7 +191,7 @@ describe('the easy-mode choice list', () => {
     // Removing it would take away the row the player is reading the distance
     // and arrow off, and hiding the miss is the opposite of the point.
     const game = submitGuess(
-      createGame(ANSWER, EASY_GUESSES),
+      createGame(ANSWER, OFFERED_GUESSES),
       CHOICES[0] as ShelfFeature,
     );
     renderChoices(elements, easyRound(), game, () => undefined);
@@ -121,7 +205,7 @@ describe('the easy-mode choice list', () => {
   it('closes the list and marks the answer once the round is over', () => {
     const lost = [CHOICES[0], CHOICES[1]].reduce(
       (game: Game, guess) => submitGuess(game, guess as ShelfFeature),
-      createGame(ANSWER, EASY_GUESSES),
+      createGame(ANSWER, OFFERED_GUESSES),
     );
     expect(lost.status).toBe('lost');
     renderChoices(elements, easyRound(), lost, () => undefined);
@@ -135,14 +219,14 @@ describe('the easy-mode choice list', () => {
     ).toBe(ANSWER.properties.name);
   });
 
-  it('offers exactly as many names as easy mode promises', () => {
+  it('offers exactly as many names as the level promises', () => {
     renderChoices(
       elements,
       easyRound(),
-      createGame(ANSWER, EASY_GUESSES),
+      createGame(ANSWER, OFFERED_GUESSES),
       () => undefined,
     );
-    expect(buttons()).toHaveLength(EASY_CHOICES);
+    expect(buttons()).toHaveLength(OFFERED_NAMES);
   });
 });
 
@@ -176,22 +260,25 @@ describe('the level control', () => {
       (b) => b.dataset['level'] === level,
     ) as HTMLButtonElement;
 
-  it('bars hard on the daily round and nothing else', () => {
-    renderMode(elements, 'daily', 'normal');
-    expect(levelButton('hard').disabled).toBe(true);
+  it('bars insane on the daily round and nothing else', () => {
+    // Insane is the only level that changes which shelf the day gets, so it
+    // is the only one that cannot go there.
+    renderMode(elements, 'daily', 'medium');
+    expect(levelButton('insane').disabled).toBe(true);
     expect(levelButton('easy').disabled).toBe(false);
-    expect(levelButton('normal').disabled).toBe(false);
+    expect(levelButton('medium').disabled).toBe(false);
+    expect(levelButton('hard').disabled).toBe(false);
   });
 
-  it('opens hard up in practice', () => {
-    renderMode(elements, 'practice', 'normal');
-    expect(levelButton('hard').disabled).toBe(false);
+  it('opens insane up in practice', () => {
+    renderMode(elements, 'practice', 'medium');
+    expect(levelButton('insane').disabled).toBe(false);
   });
 
   it('marks the level being played', () => {
     renderMode(elements, 'daily', 'easy');
     expect(levelButton('easy').getAttribute('aria-pressed')).toBe('true');
-    expect(levelButton('normal').getAttribute('aria-pressed')).toBe('false');
+    expect(levelButton('medium').getAttribute('aria-pressed')).toBe('false');
   });
 });
 

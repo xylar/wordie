@@ -77,7 +77,11 @@ const start = async (): Promise<void> => {
   const byKey = new Map(shelves.map((shelf) => [shelf.properties.key, shelf]));
 
   let mode: Mode = 'daily';
-  let level: Level = 'normal';
+  // Medium, not the open guess. Recognising a shape drawn alone, at a scale
+  // the game withholds, is most of the difficulty even for the people this is
+  // for; six names to choose between is the game most players want, and the
+  // ladder runs both ways from it.
+  let level: Level = 'medium';
   let round: Round | null = null;
   let game: Game | null = null;
 
@@ -114,7 +118,7 @@ const start = async (): Promise<void> => {
     }
 
     resetRound(elements);
-    drawOutline(elements, next.answer);
+    drawOutline(elements, next.answer, next.surroundings);
     redraw();
   };
 
@@ -125,8 +129,8 @@ const start = async (): Promise<void> => {
     elements.input.value = '';
     clearSuggestions(elements);
     redraw();
-    // Easy mode has no input to return to -- the form is hidden behind the
-    // six buttons -- and focusing a hidden field would drop focus off the
+    // A closed list has no input to return to -- the form is hidden behind
+    // the six buttons -- and focusing a hidden field would drop focus off the
     // page entirely.
     if (game.status === 'playing' && !elements.form.hidden)
       elements.input.focus();
@@ -143,10 +147,11 @@ const start = async (): Promise<void> => {
   };
 
   const startDaily = (): void => {
-    // Hard cannot follow the player into the daily: it would change which
-    // shelf the day gets. Dropping to normal rather than refusing the click
-    // keeps the level control and the round in agreement.
-    if (level === 'hard') level = 'normal';
+    // Insane cannot follow the player into the daily: it would change which
+    // shelf the day gets. Dropping to hard rather than refusing the click
+    // keeps the level control and the round in agreement, and hard is the
+    // same game against the everyday pool.
+    if (level === 'insane') level = 'hard';
     const next = dailyRound(shelves, today, level, puzzle);
     if (!next) {
       showError(elements!, 'No ice shelves to play with.');
