@@ -22,6 +22,7 @@ from typing import Any
 from shapely.geometry import MultiPolygon, Polygon
 from shapely.geometry.base import BaseGeometry
 
+from wordie.context import MaskGrid, Surroundings, polygons_of, rings_of
 from wordie.projections import extent_of
 from wordie.shelves import Shelf
 
@@ -140,9 +141,11 @@ SOURCES = [
 DERIVED_NOTE = (
     'Derived product. Ice shelf outlines traced from the BedMachine '
     'floating-ice mask, named by intersection with the MEaSUREs boundaries, '
-    'then simplified for display. Simplification is relative to each shelf, '
-    'so the geometry is not at a uniform resolution and is not suitable for '
-    'measurement. Cite the sources below, not this file.'
+    'then simplified for display. Each boundary edge carries what the mask '
+    'has across it: open ocean, grounded ice or rock, or another shelf. '
+    'Simplification is relative to each shelf, so the geometry is not at a '
+    'uniform resolution and is not suitable for measurement. Cite the '
+    'sources below, not this file.'
 )
 
 
@@ -155,18 +158,12 @@ class PayloadStats:
     hole_count: int
     dropped_hole_count: int
     max_area_change: float
+    #: Vertices in the surroundings, which are not part of any outline.
+    context_vertex_count: int = 0
 
 
 def _longest_side(geometry: BaseGeometry) -> float:
     return max(extent_of(geometry))
-
-
-def _polygons(geometry: BaseGeometry) -> list[Polygon]:
-    if isinstance(geometry, MultiPolygon):
-        return list(geometry.geoms)
-    if isinstance(geometry, Polygon):
-        return [geometry]
-    raise TypeError(f'cannot draw a {geometry.geom_type}')
 
 
 def _prune_holes(
@@ -220,7 +217,7 @@ def simplify_for_display(
 
     polygons, holes, dropped = [], 0, 0
     # Piece by piece, because the floor depends on how big the piece is.
-    for piece in _polygons(geometry):
+    for piece in polygons_of(geometry):
         tolerance = display_tolerance(
             shelf_extent, _longest_side(piece), fraction, source_cell_m
         )
@@ -246,10 +243,29 @@ def _rings(geometry: BaseGeometry) -> list[list[list[list[int]]]]:
     return [
         [
             [[int(round(x)), int(round(y))] for x, y in ring.coords]
-            for ring in [polygon.exterior, *polygon.interiors]
+            for ring in rings_of(polygon)
         ]
-        for polygon in _polygons(geometry)
+        for polygon in polygons_of(geometry)
     ]
+
+
+def _context(surroundings: Surroundings | None) -> dict[str, Any]:
+    """The surroundings as the game reads them: two layers of rings.
+
+    Open water is not one of them. It is whatever is neither land nor ice,
+    and the game draws it by leaving the page's own ground showing -- which
+    is already the colour of deep water and costs nothing to send.
+    """
+    if surroundings is None:
+        return {'land': [], 'ice': []}
+    return {
+        'land': _rings(MultiPolygon(surroundings.land))
+        if surroundings.land
+        else [],
+        'ice': _rings(MultiPolygon(surroundings.ice))
+        if surroundings.ice
+        else [],
+    }
 
 
 def build_payload(
@@ -257,10 +273,17 @@ def build_payload(
     fraction: float = DEFAULT_SIMPLIFY_FRACTION,
     min_hole_fraction: float = DEFAULT_MIN_HOLE_FRACTION,
     source_cell_m: float = DEFAULT_SOURCE_CELL_M,
+    mask: MaskGrid | None = None,
 ) -> tuple[dict[str, Any], PayloadStats]:
-    """Build the FeatureCollection the game loads."""
+    """Build the FeatureCollection the game loads.
+
+    `mask` is BedMachine's mask, and giving it is what puts each shelf's
+    surroundings in the payload. It is optional so that the shape of the file
+    can be tested without a 1.2 GB netCDF to hand -- not because the game is
+    meant to be shipped without them.
+    """
     features = []
-    vertices = holes = dropped = 0
+    vertices = holes = dropped = context = 0
     worst_area_change = 0.0
 
     for shelf in shelves:
@@ -277,6 +300,12 @@ def build_payload(
                 abs(geometry.area - shelf.geometry.area) / shelf.geometry.area,
             )
 
+        surroundings = (
+            mask.surroundings(shelf.geometry) if mask is not None else None
+        )
+        if surroundings is not None:
+            context += surroundings.vertex_count
+
         features.append(
             {
                 'type': 'Feature',
@@ -289,6 +318,11 @@ def build_payload(
                     # and a bearing in the map plane, and both want degrees.
                     'lon': round(shelf.centroid[0], 4),
                     'lat': round(shelf.centroid[1], 4),
+                    # What is around the shelf, in the same coordinates as
+                    # the geometry below. Omitted entirely rather than
+                    # written empty when there is no mask to trace it from,
+                    # so that a payload without it is obviously without it.
+                    **({'context': _context(surroundings)} if mask else {}),
                 },
                 'geometry': {
                     'type': 'MultiPolygon',
@@ -310,4 +344,5 @@ def build_payload(
         hole_count=holes,
         dropped_hole_count=dropped,
         max_area_change=worst_area_change,
+        context_vertex_count=context,
     )

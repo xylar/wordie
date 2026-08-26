@@ -120,12 +120,22 @@ without saying what the answer was.
 
 ### Levels
 
-**Easy** names six candidates and allows two guesses at them. Six against the
-everyday 52: a blind pick wins one game in six, and a second guess informed by
-the first one's distance and arrow wins better than one in three before any
-knowledge of the continent comes into it at all. Two guesses rather than six,
-because six guesses at six names is not a puzzle — the last one is right by
-elimination and the arrows stop mattering.
+**Easy** names six candidates, allows two guesses at them, and draws the shelf
+in its surroundings instead of alone in an empty box. Six against the everyday
+52: a blind pick wins one game in six, and a second guess informed by the first
+one's distance and arrow wins better than one in three before any knowledge of
+the continent comes into it at all. Two guesses rather than six, because six
+guesses at six names is not a puzzle — the last one is right by elimination and
+the arrows stop mattering.
+
+The surroundings are the other half, and they are the half that rewards
+knowing something. An outline alone withholds which of its edges is the
+calving front and which is the grounding line, and that is most of what a
+glaciologist reads a shelf by: Ross is a blunt front across the bottom of a
+coast that wraps round everything else, Amery is a tongue gripped down both
+sides, George VI is a channel with open water at each end and rock the whole
+way along. Filling in the land makes that argument in one glance. See
+[What is around a shelf](#what-is-around-a-shelf).
 
 **Normal** is the game above: six guesses, open across all 164 names.
 
@@ -149,6 +159,48 @@ wordie #7 4/6
 Each level keeps its own save for the day, so switching does not throw away a
 game in progress.
 
+## What is around a shelf
+
+BedMachine's mask has five values and the pipeline traces one of them. The
+other four are the surroundings, on the same grid as the shape they surround:
+`grounded_ice`, `ice_free_land` and `lake_vostok` are land in the sense that
+matters here — ice or rock sitting on the bed — and `ocean` is the sea. So for
+each shelf the pipeline cuts a square of the mask around it and turns those
+into polygons of their own.
+
+Two layers are shipped, not three. **Land** is anything resting on the bed.
+**Ice** is floating ice that is not this shelf — the neighbour across a cut,
+Ronne beside Filchner, which is neither land nor sea and would be a lie drawn
+as either. Thirty of the 164 shelves have one. Open water is the third and
+costs nothing: it is whatever is neither, and the game draws it by leaving the
+frame's own ground showing, which is already the colour of deep water.
+
+The square is 1.15 times the shelf's own longest side, and that is what keeps
+the scale withheld. The game scales every shelf to fill the same frame, so
+Ross and Rydberg Peninsula are the same size on screen; scaling each shelf's
+surroundings by the same number keeps it that way. A window of fixed width in
+kilometres would have said how big the shelf was before the player had named
+anything.
+
+The surroundings are simplified far more coarsely than the outlines — two
+pixels against a twentieth of one — and pieces under about six pixels across
+are dropped outright. The outline is what the player is being asked to
+recognise; a headland fifty kilometres inland is doing its work at a glance or
+not at all, and the coast off an ice front is speckled with rocks and grounded
+bergs a cell or two across that are dirt on the screen and a third of the
+vertices in the file. Even so this is the most expensive thing in the payload
+after the outlines themselves: 20,968 vertices against 28,711, which takes the
+file from 540 kB to 923 kB and what crosses the wire from 111 kB to 174 kB
+gzipped. It buys the one hint that is about the ice rather than about the
+list of names.
+
+They are drawn under the outline and clipped by the frame, with straight
+segments where the outline is drawn as curves. That is not an oversight: the
+surroundings are cut off at the edge of a square, and by the time the
+coordinates reach the browser the corner of that square is indistinguishable
+from a headland. Rounding one rounds the other, and a corner-cut through a
+corner with two enormously long sides swings half way across the picture.
+
 ## How a guess is scored
 
 Distance is the true geodesic distance between shelf centroids on WGS 84, in km.
@@ -162,8 +214,10 @@ bearing matches the mental map the player is working from.
 
 ## What the browser downloads
 
-`web/src/data/shelves.geojson` holds all 164 outlines: 540 kB, and about
-85 kB over the wire once the server compresses it. It is imported rather than
+`web/src/data/shelves.geojson` holds all 164 outlines and the surroundings
+easy mode draws them in: 923 kB, which is 115 kB compressed with Brotli and
+174 kB with gzip. The outlines alone are 540 kB of that; see
+[What is around a shelf](#what-is-around-a-shelf) for the rest. It is imported rather than
 served from `public/`, so the build gives it a content hash — under a fixed
 name a returning player keeps whatever their browser cached, which is how a
 round of outline fixes once reached the deployed site and not the people

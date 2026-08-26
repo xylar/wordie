@@ -1,9 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import { boundsOf, outlinePath, type ShelfFeature } from './shelves';
+import {
+  boundsOf,
+  contextPaths,
+  outlinePath,
+  type ShelfContext,
+  type ShelfFeature,
+} from './shelves';
 
-const feature = (coordinates: number[][][][]): ShelfFeature => ({
+const feature = (
+  coordinates: number[][][][],
+  context?: ShelfContext,
+): ShelfFeature => ({
   type: 'Feature',
-  properties: { key: 'Test', name: 'Test', area_km2: 1, lon: 0, lat: -70 },
+  properties: {
+    key: 'Test',
+    name: 'Test',
+    area_km2: 1,
+    lon: 0,
+    lat: -70,
+    ...(context ? { context } : {}),
+  },
   geometry: { type: 'MultiPolygon', coordinates },
 });
 
@@ -262,5 +278,71 @@ describe('smoothing', () => {
     const withRise = feature([[square(0, 0, 100), square(40, 40, 20)]]);
     expect(outlinePath(withRise).match(/M/g)).toHaveLength(2);
     expect(outlinePath(withRise).match(/Z/g)).toHaveLength(2);
+  });
+});
+
+describe('contextPaths', () => {
+  const box = (x0: number, y0: number, size: number): number[][] => [
+    [x0, y0],
+    [x0 + size, y0],
+    [x0 + size, y0 + size],
+    [x0, y0 + size],
+    [x0, y0],
+  ];
+  const shelf = box(0, 0, 100);
+
+  it('says nothing about a shelf with no surroundings in the file', () => {
+    // A payload built without the mask carries none, and the game has to go
+    // on drawing the outline as it always did.
+    expect(contextPaths(feature([[shelf]]))).toEqual({ land: '', ice: '' });
+  });
+
+  it('scales the surroundings by the shelf, not by themselves', () => {
+    // The land reaches past the frame on every side. Fitting the drawing to
+    // it instead of to the shelf would shrink every shelf to make room for
+    // its own scenery, and the whole game is one shelf at one size.
+    const alone = feature([[shelf]]);
+    const surrounded = feature([[shelf]], {
+      land: [[box(-200, -200, 500)]],
+      ice: [],
+    });
+
+    expect(outlinePath(surrounded)).toBe(outlinePath(alone));
+  });
+
+  it('draws the land past the edge of the box', () => {
+    const surrounded = feature([[shelf]], {
+      land: [[box(-200, -200, 500)]],
+      ice: [],
+    });
+
+    const drawn = points(contextPaths(surrounded).land);
+    const xs = drawn.map(([x]) => x);
+
+    expect(Math.min(...xs)).toBeLessThan(0);
+    expect(Math.max(...xs)).toBeGreaterThan(100);
+  });
+
+  it('keeps each layer to its own path', () => {
+    const surrounded = feature([[shelf]], {
+      land: [[box(-200, -200, 120)]],
+      ice: [[box(150, 150, 60)]],
+    });
+    const drawn = contextPaths(surrounded);
+
+    expect(drawn.land).not.toBe('');
+    expect(drawn.ice).not.toBe('');
+    expect(drawn.land).not.toBe(drawn.ice);
+  });
+
+  it('gives every ring of a layer to one path, holes included', () => {
+    // One path per layer is what lets evenodd cut a lake out of the ice
+    // sheet; two paths would fill the hole in with the second one.
+    const surrounded = feature([[shelf]], {
+      land: [[box(-200, -200, 500), box(-100, -100, 50)]],
+      ice: [],
+    });
+
+    expect(contextPaths(surrounded).land.split('M')).toHaveLength(3);
   });
 });

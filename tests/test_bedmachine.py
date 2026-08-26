@@ -11,6 +11,7 @@ from wordie.bedmachine import (
     MaskConventionError,
     _affine_from_centres,
     read_floating_mask,
+    read_mask,
 )
 
 
@@ -41,6 +42,24 @@ class TestAffineFromCentres:
     def test_rejects_a_grid_too_small_to_have_a_step(self) -> None:
         with pytest.raises(ValueError, match='at least two cells'):
             _affine_from_centres(np.array([0.0]), np.array([0.0]))
+
+
+class TestReadMask:
+    def test_keeps_every_class_the_file_has(self, tmp_path: Path) -> None:
+        # The classes other than floating ice are what say whether an edge of
+        # a shelf is against the sea or against the land, so the reader that
+        # feeds the margins cannot be the one that throws them away.
+        values = np.zeros((GRID_CELLS, GRID_CELLS), dtype=np.int8)
+        values[4:8, 4:8] = 2
+        values[10:14, 10:14] = FLOATING_ICE
+        values[20:22, 20:22] = 4
+        path = tmp_path / 'bedmachine.nc'
+        write_bedmachine(str(path), values)
+
+        found, transform = read_mask(path)
+
+        assert set(np.unique(found)) == {0, 2, FLOATING_ICE, 4}
+        assert transform.a == pytest.approx(CELL_SIZE_M)
 
 
 class TestReadFloatingMask:

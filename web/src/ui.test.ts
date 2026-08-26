@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  drawOutline,
   findElements,
   renderChoices,
   renderMode,
@@ -15,7 +16,28 @@ import type { ShelfFeature } from './shelves';
 
 const shelf = (key: string, lon = 0): ShelfFeature => ({
   type: 'Feature',
-  properties: { key, name: key, area_km2: 1000, lon, lat: -70 },
+  properties: {
+    key,
+    name: key,
+    area_km2: 1000,
+    lon,
+    lat: -70,
+    // A square of land off one side, as the pipeline would have traced it.
+    context: {
+      land: [
+        [
+          [
+            [2, 0],
+            [3, 0],
+            [3, 1],
+            [2, 1],
+            [2, 0],
+          ],
+        ],
+      ],
+      ice: [],
+    },
+  },
   geometry: {
     type: 'MultiPolygon',
     coordinates: [
@@ -24,6 +46,8 @@ const shelf = (key: string, lon = 0): ShelfFeature => ({
           [0, 0],
           [1, 0],
           [1, 1],
+          [0, 1],
+          [0, 0],
         ],
       ],
     ],
@@ -38,6 +62,9 @@ const ANSWER = CHOICES[4] as ShelfFeature;
 /** Enough of the page for the renderers to write into. */
 const page = `
   <path id="outline"></path>
+  <path id="context-land"></path>
+  <path id="context-ice"></path>
+  <p id="context-key" hidden><span id="key-ice" hidden></span></p>
   <p id="reveal"></p>
   <form id="guess-form"><input id="guess-input" /><ul id="suggestions"></ul></form>
   <ul id="choices"></ul>
@@ -78,6 +105,60 @@ beforeEach(() => {
   document.body.innerHTML = page;
   elements = findElements() as Elements;
   expect(elements).not.toBeNull();
+});
+
+describe('the surroundings under the outline', () => {
+  it('are drawn on easy, with a key saying what they are', () => {
+    drawOutline(elements, ANSWER, true);
+
+    expect(elements.land.getAttribute('d')).toBeTruthy();
+    expect(elements.contextKey.hidden).toBe(false);
+  });
+
+  it('name a neighbouring shelf only when there is one', () => {
+    // Most shelves are a body of ice on their own, and a key entry for a
+    // colour that is not on the page is a colour the player hunts for.
+    drawOutline(elements, ANSWER, true);
+    expect(elements.iceKey.hidden).toBe(true);
+
+    const neighboured = shelf('Filchner');
+    neighboured.properties.context = {
+      land: [],
+      ice: [
+        [
+          [
+            [2, 0],
+            [3, 0],
+            [3, 1],
+            [2, 1],
+            [2, 0],
+          ],
+        ],
+      ],
+    };
+    drawOutline(elements, neighboured, true);
+
+    expect(elements.iceKey.hidden).toBe(false);
+  });
+
+  it('are left off at every other level', () => {
+    // The hint is the level's, not the shelf's: the same outline is drawn
+    // without it on normal and hard.
+    drawOutline(elements, ANSWER, true);
+    drawOutline(elements, ANSWER, false);
+
+    expect(elements.land.getAttribute('d')).toBe('');
+    expect(elements.ice.getAttribute('d')).toBe('');
+    expect(elements.contextKey.hidden).toBe(true);
+  });
+
+  it('leave the outline itself alone either way', () => {
+    drawOutline(elements, ANSWER, false);
+    const plain = elements.outline.getAttribute('d');
+    drawOutline(elements, ANSWER, true);
+
+    expect(elements.outline.getAttribute('d')).toBe(plain);
+  });
 });
 
 describe('the easy-mode choice list', () => {

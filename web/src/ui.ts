@@ -7,12 +7,19 @@ import type { Game, GuessResult } from './game';
 import { guessesRemaining } from './game';
 import type { Level } from './pool';
 import type { Round } from './rounds';
-import { outlinePath, type ShelfFeature } from './shelves';
+import { contextPaths, outlinePath, type ShelfFeature } from './shelves';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 export interface Elements {
   outline: SVGPathElement;
+  /** Easy mode's surroundings: what the shelf is pinned to, and the ice
+   * next door. Open water is the frame's own ground. */
+  land: SVGPathElement;
+  ice: SVGPathElement;
+  contextKey: HTMLElement;
+  /** The third entry in the key, for the shelves that have a neighbour. */
+  iceKey: HTMLElement;
   reveal: HTMLElement;
   form: HTMLFormElement;
   input: HTMLInputElement;
@@ -29,6 +36,10 @@ export interface Elements {
 
 export const findElements = (): Elements | null => {
   const outline = document.querySelector<SVGPathElement>('#outline');
+  const land = document.querySelector<SVGPathElement>('#context-land');
+  const ice = document.querySelector<SVGPathElement>('#context-ice');
+  const contextKey = document.querySelector<HTMLElement>('#context-key');
+  const iceKey = document.querySelector<HTMLElement>('#key-ice');
   const reveal = document.querySelector<HTMLElement>('#reveal');
   const form = document.querySelector<HTMLFormElement>('#guess-form');
   const input = document.querySelector<HTMLInputElement>('#guess-input');
@@ -45,6 +56,10 @@ export const findElements = (): Elements | null => {
   ];
   if (
     !outline ||
+    !land ||
+    !ice ||
+    !contextKey ||
+    !iceKey ||
     !reveal ||
     !form ||
     !input ||
@@ -62,6 +77,10 @@ export const findElements = (): Elements | null => {
   }
   return {
     outline,
+    land,
+    ice,
+    contextKey,
+    iceKey,
     reveal,
     form,
     input,
@@ -77,8 +96,29 @@ export const findElements = (): Elements | null => {
   };
 };
 
-export const drawOutline = (elements: Elements, shelf: ShelfFeature): void => {
+/**
+ * Draw the shelf, and on easy the world around it.
+ *
+ * `context` is what the level asks for, not what the shelf has. A payload
+ * built without the mask carries no surroundings at all and the paths come
+ * back empty; nothing here needs to know that, because an empty path draws
+ * nothing and the key is hidden along with it.
+ */
+export const drawOutline = (
+  elements: Elements,
+  shelf: ShelfFeature,
+  context = false,
+): void => {
   elements.outline.setAttribute('d', outlinePath(shelf));
+
+  const drawn = context ? contextPaths(shelf) : { land: '', ice: '' };
+  elements.land.setAttribute('d', drawn.land);
+  elements.ice.setAttribute('d', drawn.ice);
+  elements.contextKey.hidden = !(drawn.land || drawn.ice);
+  // Named only when there is one to name. Most shelves are a body of ice on
+  // their own, and a key entry for a colour not on the page is a colour the
+  // player goes looking for.
+  elements.iceKey.hidden = !drawn.ice;
 };
 
 const formatDistance = (km: number): string =>
@@ -344,6 +384,10 @@ export const clearSuggestions = (elements: Elements): void => {
 /** A blank outline, for before anything has loaded. */
 export const clearOutline = (elements: Elements): void => {
   elements.outline.removeAttribute('d');
+  elements.land.removeAttribute('d');
+  elements.ice.removeAttribute('d');
+  elements.contextKey.hidden = true;
+  elements.iceKey.hidden = true;
 };
 
 export const showError = (elements: Elements, message: string): void => {

@@ -15,6 +15,20 @@
 // eslint-disable-next-line -- Vite resolves this to a content-hashed URL.
 import shelvesUrl from './data/shelves.geojson?url';
 
+/**
+ * What is around a shelf, in the same coordinates as its outline.
+ *
+ * Two layers, because open water is a third and costs nothing: it is
+ * whatever is neither, and the game draws it by leaving the frame's own
+ * ground showing.
+ */
+export interface ShelfContext {
+  /** Grounded ice, ice-free land and Lake Vostok. */
+  land: number[][][][];
+  /** Floating ice that is not this shelf: its neighbours across a cut. */
+  ice: number[][][][];
+}
+
 export interface ShelfProperties {
   /** Stable identifier, the dataset's own spelling: 'LarsenC'. */
   key: string;
@@ -24,6 +38,11 @@ export interface ShelfProperties {
   /** Centroid in degrees, for scoring a guess. */
   lon: number;
   lat: number;
+  /**
+   * The land and the neighbouring ice around this shelf. Absent from a
+   * payload built without the mask to trace them from.
+   */
+  context?: ShelfContext;
 }
 
 export interface ShelfFeature {
@@ -135,17 +154,10 @@ const straightRing = (points: [number, number][]): string =>
  * are the shelf's own; this rounds those corners, and the result reads as a
  * coastline instead of a cutting.
  */
-const quadraticRing = (points: [number, number][]): string => {
-  const ring =
-    points.length > 1 &&
-    points[0]?.[0] === points[points.length - 1]?.[0] &&
-    points[0]?.[1] === points[points.length - 1]?.[1]
-      ? points.slice(0, -1)
-      : points;
-
+const quadraticRing = (ring: [number, number][]): string => {
   // Below a triangle there is no corner to round, and the curve would be
   // degenerate; draw what little there is straight.
-  if (ring.length < 3) return straightRing(points);
+  if (ring.length < 3) return straightRing(ring);
 
   const last = ring[ring.length - 1] as [number, number];
   const first = ring[0] as [number, number];
@@ -158,11 +170,19 @@ const quadraticRing = (points: [number, number][]): string => {
   return `${segments.join('')}Z`;
 };
 
-export const outlinePath = (
+/**
+ * How this shelf's coordinates become points in the viewBox.
+ *
+ * Built once from the shelf's own bounds and then applied to anything drawn
+ * beside it. The surroundings are deliberately not part of the bounds they
+ * are scaled by: they reach past the frame on every side, and letting them
+ * into the sum would shrink every shelf to make room for its own scenery.
+ */
+const projector = (
   feature: ShelfFeature,
-  options: OutlineOptions = DEFAULT_OUTLINE_OPTIONS,
-): string => {
-  const { size, padding, smoothed } = options;
+  options: OutlineOptions,
+): ((ring: number[][]) => [number, number][]) => {
+  const { size, padding } = options;
   const { minX, minY, maxX, maxY } = boundsOf(feature);
 
   const usable = size * (1 - 2 * padding);
@@ -170,8 +190,7 @@ export const outlinePath = (
   const offsetX = (size - (maxX - minX) * scale) / 2;
   const offsetY = (size - (maxY - minY) * scale) / 2;
 
-  const parts: string[] = [];
-  for (const ring of rings(feature)) {
+  return (ring: number[][]): [number, number][] => {
     const points: [number, number][] = [];
     for (const point of ring) {
       const x = point[0];
@@ -185,10 +204,70 @@ export const outlinePath = (
         size - (offsetY + (y - minY) * scale),
       ]);
     }
-    const path = smoothed ? quadraticRing(points) : straightRing(points);
+    // The closing point a GeoJSON ring repeats is dropped here rather than
+    // in each drawing routine: what follows works in edges, and an edge from
+    // the last vertex back to the first is one edge, not two.
+    const first = points[0];
+    const last = points[points.length - 1];
+    return points.length > 1 &&
+      first?.[0] === last?.[0] &&
+      first?.[1] === last?.[1]
+      ? points.slice(0, -1)
+      : points;
+  };
+};
+
+export const outlinePath = (
+  feature: ShelfFeature,
+  options: OutlineOptions = DEFAULT_OUTLINE_OPTIONS,
+): string => {
+  const project = projector(feature, options);
+  const parts: string[] = [];
+  for (const ring of rings(feature)) {
+    const points = project(ring);
+    const path = options.smoothed
+      ? quadraticRing(points)
+      : straightRing(points);
     if (path) parts.push(path);
   }
   return parts.join('');
+};
+
+/**
+ * The land and the neighbouring ice around one shelf, as two paths.
+ *
+ * Drawn from the same projection as the outline, so the coast meets the shelf
+ * where the mask says it does rather than a pixel off it. Each comes back as
+ * one path of many rings, which is what lets `fill-rule: evenodd` cut the
+ * holes out of the fill -- a lake in the ice sheet, or the bay a shelf sits
+ * in.
+ *
+ * Straight segments, though, where the outline is drawn as curves. The
+ * surroundings are cut off at the edge of a square, and in the coordinates
+ * that arrive here the corner of that square is indistinguishable from a
+ * headland: corner-cutting one of them means corner-cutting the other, and
+ * a quadratic through a corner with two enormously long sides swings half
+ * way across the picture. The coastline is simplified to two pixels anyway,
+ * which is finer than a facet anyone will find in scenery.
+ *
+ * Both are empty for a payload built without the mask, and the game then
+ * draws what it always drew.
+ */
+export const contextPaths = (
+  feature: ShelfFeature,
+  options: OutlineOptions = DEFAULT_OUTLINE_OPTIONS,
+): Record<keyof ShelfContext, string> => {
+  const context = feature.properties.context;
+  if (!context) return { land: '', ice: '' };
+
+  const project = projector(feature, options);
+  const draw = (polygons: number[][][][]): string =>
+    polygons
+      .flat()
+      .map((ring) => straightRing(project(ring)))
+      .join('');
+
+  return { land: draw(context.land), ice: draw(context.ice) };
 };
 
 /**

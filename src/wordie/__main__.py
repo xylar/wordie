@@ -8,8 +8,9 @@ import os
 from collections.abc import Sequence
 from pathlib import Path
 
-from wordie.bedmachine import read_floating_mask
+from wordie.bedmachine import FLOATING_ICE, read_floating_mask, read_mask
 from wordie.boundaries import NamedShelf, read_named_shelves
+from wordie.context import MaskGrid
 from wordie.logo import write_logo_set
 from wordie.names import DISPLAY_OVERRIDES
 from wordie.outlines import DEFAULT_MIN_AREA_KM2, polygonize_floating_ice
@@ -347,8 +348,8 @@ def _run_shelves(args: argparse.Namespace) -> int:
         args.boundaries, '--boundaries', 'https://nsidc.org/data/nsidc-0709'
     )
 
-    mask, transform = read_floating_mask(bedmachine)
-    outlines = polygonize_floating_ice(mask, transform)
+    values, transform = read_mask(bedmachine)
+    outlines = polygonize_floating_ice(values == FLOATING_ICE, transform)
     available = read_named_shelves(boundaries)
     named, report = name_outlines(outlines, available)
 
@@ -408,6 +409,9 @@ def _run_shelves(args: argparse.Namespace) -> int:
         # Taken from the file rather than assumed, so a future BedMachine at
         # a different resolution needs no change here.
         source_cell_m=abs(transform.a),
+        # The rest of the mask, which is everything each shelf is
+        # surrounded by.
+        mask=MaskGrid(values, transform),
     )
     args.payload.parent.mkdir(parents=True, exist_ok=True)
     # Separators without spaces: this file is read by a browser, not a person.
@@ -418,6 +422,7 @@ def _run_shelves(args: argparse.Namespace) -> int:
         f'{stats.vertex_count:,} vertices, '
         f'{stats.hole_count:,} ice rises kept '
         f'({stats.dropped_hole_count:,} too small to see dropped), '
+        f'{stats.context_vertex_count:,} vertices of surroundings, '
         f'worst area change {100 * stats.max_area_change:.3f}%'
     )
     return 0

@@ -114,7 +114,10 @@ const start = async (): Promise<void> => {
     }
 
     resetRound(elements);
-    drawOutline(elements, next.answer);
+    // Easy mode alone gets the surroundings: the level is where the
+    // assistance lives, and this is assistance -- seeing which edge of Ross
+    // faces the sea is most of the way to recognising it.
+    drawOutline(elements, next.answer, next.level === 'easy');
     redraw();
   };
 
