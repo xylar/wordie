@@ -35,10 +35,13 @@
         </div>
         <div class="level-buttons" role="group" aria-label="Difficulty">
           <button id="level-easy" type="button" data-level="easy">Easy</button>
-          <button id="level-normal" type="button" data-level="normal">
-            Normal
+          <button id="level-medium" type="button" data-level="medium">
+            Medium
           </button>
           <button id="level-hard" type="button" data-level="hard">Hard</button>
+          <button id="level-insane" type="button" data-level="insane">
+            Insane
+          </button>
         </div>
       </div>
 
@@ -85,8 +88,8 @@
         ></ul>
       </form>
 
-      <!-- Easy mode's closed list. Empty, and hidden by :empty, at every other
-           level, where guessing is open across all 164 shelves. -->
+      <!-- The closed list easy and medium offer. Empty, and hidden by :empty,
+           at the two levels where guessing is open across all 164 shelves. -->
       <ul id="choices" class="choices" aria-label="Choose an ice shelf"></ul>
 
       <p id="remaining" class="remaining" aria-live="polite"></p>
@@ -106,11 +109,11 @@
       <dialog id="about">
         <h2>About wordie</h2>
         <p>
-          Six guesses at an Antarctic ice shelf, shown by its outline with the
-          scale withheld. A wrong guess reports the geodesic distance to the
-          answer and an arrow pointing the way a polar stereographic map does —
-          not the way the great circle sets off, which near the pole can be the
-          opposite direction.
+          Name an Antarctic ice shelf from its outline, with the scale withheld.
+          A wrong guess reports the geodesic distance to the answer and an arrow
+          pointing the way a polar stereographic map does — not the way the
+          great circle sets off, which near the pole can be the opposite
+          direction.
         </p>
         <p>
           Easy offers six names, allows two guesses, and shades the outline to

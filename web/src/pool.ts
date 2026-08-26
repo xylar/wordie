@@ -69,27 +69,38 @@ export const answerPool = (
 /**
  * How much help the player gets.
  *
- * Three points on what a player reads as one ladder, though only one of them
- * touches the answer pool. Easy narrows the *guessing* to six named choices
- * and allows two of them; hard widens the *drawing* to all 164. Normal is the
- * game as it was.
+ * Four rungs, and three different kinds of help, which is why they are not
+ * simply four different numbers of guesses.
  *
- * The distinction matters for the daily round. Hard cannot go there, because
- * it would change which shelf the day gets. Easy can: the day's shelf is the
- * same at every level, and only the assistance differs.
+ * - **easy** offers six names, two guesses at them, and draws the shelf in
+ *   its surroundings, so the sea is on one side and the land on the other.
+ * - **medium** takes the surroundings away and leaves the outline alone in
+ *   its box. Six names is still a real puzzle: recognising a shape you have
+ *   only ever seen at the scale of a continent is most of the difficulty,
+ *   and a short list only says which shapes it might be.
+ * - **hard** opens the guessing to all 164 names, with six guesses to spend
+ *   on finding one.
+ * - **insane** draws the answer from all 164 as well, so the shelf can be a
+ *   20 km inlet nobody outside one field season has heard of.
+ *
+ * Only insane touches the answer pool, and that is the line that matters for
+ * the daily round. It cannot go there: it would change which shelf the day
+ * gets, and two people comparing results would be comparing different
+ * puzzles. The other three change only the assistance, so everyone playing
+ * the day is still naming the same outline.
  */
-export type Level = 'easy' | 'normal' | 'hard';
+export type Level = 'easy' | 'medium' | 'hard' | 'insane';
 
 /**
- * How many names easy mode offers.
+ * How many names the two closed-list levels offer.
  *
  * Six, against 52 in the everyday pool. A blind pick wins 1 in 6, and with a
  * second guess informed by the first one's distance and arrow, 37% before any
- * knowledge of the continent is brought to bear at all. That is the floor the
- * mode is aiming at: a player who knows nothing still finishes better than one
- * game in three, rather than one in nine.
+ * knowledge of the continent is brought to bear at all. That is the floor
+ * these levels aim at: a player who knows nothing still finishes better than
+ * one game in three, rather than one in nine.
  */
-export const EASY_CHOICES = 6;
+export const OFFERED_NAMES = 6;
 
 /**
  * How many of those six may be spent.
@@ -98,24 +109,42 @@ export const EASY_CHOICES = 6;
  * read out: the last guess is always right by elimination and the arrows stop
  * mattering. Two keeps the first wrong guess worth reading.
  */
-export const EASY_GUESSES = 2;
+export const OFFERED_GUESSES = 2;
 
 /** Which shelves a level draws its answer from. */
 export const poolFor = (level: Level): Difficulty =>
-  level === 'hard' ? 'all' : 'major';
+  level === 'insane' ? 'all' : 'major';
 
-/** How many guesses a level allows. */
-export const guessesFor = (level: Level, standard: number): number =>
-  level === 'easy' ? EASY_GUESSES : standard;
+/** Whether a level shortens the list of names instead of opening it. */
+export const offersNames = (level: Level): boolean =>
+  level === 'easy' || level === 'medium';
 
 /**
- * The names easy mode puts in front of the player: the answer, and enough
- * others to fill out `size`.
+ * Whether a level draws the shelf in its surroundings.
+ *
+ * Easy alone. It is the largest single piece of help in the game -- which
+ * edge faces the sea is most of what a shelf is recognised by -- so it is
+ * the first thing the ladder takes away.
+ */
+export const showsSurroundings = (level: Level): boolean => level === 'easy';
+
+/**
+ * How many guesses a level allows.
+ *
+ * The short list and the short count of guesses are the same decision, so
+ * this asks the same question rather than repeating the list of levels.
+ */
+export const guessesFor = (level: Level, standard: number): number =>
+  offersNames(level) ? OFFERED_GUESSES : standard;
+
+/**
+ * The names a closed-list level puts in front of the player: the answer, and
+ * enough others to fill out `size`.
  *
  * The distractors come from the same everyday pool the answer did, not from
- * all 164. A pool of obscurities would make the mode easier rather than
- * harder -- a name nobody recognises is one nobody picks -- and easy mode is
- * meant to shorten the list, not to stock it with straw men.
+ * all 164. A pool of obscurities would make the level easier rather than
+ * harder -- a name nobody recognises is one nobody picks -- and a short list
+ * is meant to shorten the choice, not to stock it with straw men.
  *
  * Returned in name order. The set is what the player has to work with, and
  * alphabetical is the one arrangement that is quick to scan and says nothing
@@ -125,7 +154,7 @@ export const choiceSet = (
   pool: ShelfFeature[],
   answer: ShelfFeature,
   random: () => number = Math.random,
-  size: number = EASY_CHOICES,
+  size: number = OFFERED_NAMES,
 ): ShelfFeature[] => {
   const others = pool.filter(
     (shelf) => shelf.properties.key !== answer.properties.key,

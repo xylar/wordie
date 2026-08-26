@@ -56,11 +56,15 @@ const storage = (): Storage | null => {
  * have thrown the first one away, which is a worse thing to do to somebody
  * than keeping two small strings.
  *
- * Normal keeps the bare key it has always had, so saves written before levels
- * existed still load.
+ * Hard keeps the bare key, which is not an arbitrary choice: the bare key has
+ * always meant the six-guess game against the open list of 164 names, first
+ * when that was the only game there was and then under the name `normal`.
+ * That is exactly what hard is now, so a game saved this morning is still
+ * there this afternoon under its new name, rather than being restored into a
+ * two-guess round it would lose on the spot.
  */
 const keyFor = (puzzle: number, level: Level): string =>
-  level === 'normal'
+  level === 'hard'
     ? `${KEY_PREFIX}${puzzle}`
     : `${KEY_PREFIX}${puzzle}:${level}`;
 

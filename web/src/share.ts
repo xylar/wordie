@@ -46,15 +46,19 @@ export interface ShareOptions {
  * kilometre figure would narrow the answer down for anyone who knows the
  * continent, which is exactly the audience this is for.
  *
- * Easy mode says so on the first line. The shelf was the same one everybody
- * else got -- easy shortens the list of names, it does not change the day's
- * puzzle -- but a 1/2 alongside somebody's 4/6 has to be legible as a
- * different bargain rather than as a rout, and the denominator alone is too
- * quiet to carry that.
+ * Every level but the default says so on the first line. The shelf was the
+ * same one everybody else got -- the levels shorten the list of names and
+ * shade in the surroundings, they do not change the day's puzzle -- but a 1/2
+ * alongside somebody's 4/6 has to be legible as a different bargain rather
+ * than as a rout, and the denominator alone is too quiet to carry that.
+ *
+ * Medium is the one that goes unmarked, because it is where a player starts:
+ * an unlabelled line is the ordinary game, and naming it on every paste would
+ * be a word spent saying nothing.
  */
 export const shareText = (game: Game, options: ShareOptions): string => {
   const score = game.status === 'won' ? `${game.guesses.length}` : 'X';
-  const level = options.level === 'normal' ? '' : `${options.level} `;
+  const level = options.level === 'medium' ? '' : `${options.level} `;
   const lines = [
     `wordie #${options.puzzle} ${level}${score}/${game.maxGuesses}`,
     '',

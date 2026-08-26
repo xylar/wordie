@@ -215,7 +215,7 @@ export const renderSuggestions = (
 };
 
 /**
- * Easy mode's six names, as buttons.
+ * The closed list's six names, as buttons.
  *
  * Rendered from scratch each time rather than having their disabled state
  * toggled, so that the list on the page is always exactly what the round and
@@ -294,21 +294,22 @@ export const resetRound = (elements: Elements): void => {
 };
 
 const LEVEL_TITLES: Record<Level, string> = {
-  easy: 'Six names to choose from, and two guesses.',
-  normal: 'Six guesses at any of the 164 named shelves.',
-  hard: 'Draw practice shelves from all 164 named shelves.',
+  easy: 'Six names, two guesses, and the shelf drawn in its surroundings.',
+  medium: 'Six names to choose from, and two guesses.',
+  hard: 'Six guesses at any of the 164 named shelves.',
+  insane: 'Draw practice shelves from all 164 named shelves.',
 };
 
 /**
  * Show which puzzle is being played, and at what level.
  *
- * Hard is disabled rather than hidden while the daily round is on, because it
- * does nothing there: the day's shelf always comes from the everyday pool, so
- * that everyone is playing the same puzzle. A control that silently did
+ * Insane is disabled rather than hidden while the daily round is on, because
+ * it does nothing there: the day's shelf always comes from the everyday pool,
+ * so that everyone is playing the same puzzle. A control that silently did
  * nothing would be worse than one visibly switched off.
  *
- * Easy stays live on the daily. It does not change which shelf the day gets,
- * only how much help there is in naming it.
+ * The other three stay live on the daily. None of them changes which shelf
+ * the day gets, only how much help there is in naming it.
  */
 export const renderMode = (
   elements: Elements,
@@ -324,7 +325,7 @@ export const renderMode = (
 
   for (const button of elements.levels) {
     const its = button.dataset['level'] as Level;
-    const barred = its === 'hard' && mode === 'daily';
+    const barred = its === 'insane' && mode === 'daily';
     button.classList.toggle('selected', its === level);
     button.setAttribute('aria-pressed', String(its === level));
     button.disabled = barred;

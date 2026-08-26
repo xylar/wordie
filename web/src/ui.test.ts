@@ -10,7 +10,7 @@ import {
   type Elements,
 } from './ui';
 import { createGame, submitGuess, type Game } from './game';
-import { EASY_CHOICES, EASY_GUESSES } from './pool';
+import { OFFERED_GUESSES, OFFERED_NAMES } from './pool';
 import type { Round } from './rounds';
 import type { ShelfFeature } from './shelves';
 
@@ -76,22 +76,25 @@ const page = `
   <button id="mode-practice"></button>
   <div class="level-buttons">
     <button data-level="easy"></button>
-    <button data-level="normal"></button>
+    <button data-level="medium"></button>
     <button data-level="hard"></button>
+    <button data-level="insane"></button>
   </div>`;
 
 const easyRound = (): Round => ({
   answer: ANSWER,
   level: 'easy',
   choices: CHOICES,
-  maxGuesses: EASY_GUESSES,
+  surroundings: true,
+  maxGuesses: OFFERED_GUESSES,
   persist: true,
 });
 
 const openRound = (): Round => ({
   answer: ANSWER,
-  level: 'normal',
+  level: 'hard',
   choices: null,
+  surroundings: false,
   maxGuesses: 6,
   persist: true,
 });
@@ -163,7 +166,7 @@ describe('the surroundings under the outline', () => {
 
 describe('the easy-mode choice list', () => {
   it('shows the names instead of the text input', () => {
-    const game = createGame(ANSWER, EASY_GUESSES);
+    const game = createGame(ANSWER, OFFERED_GUESSES);
     renderChoices(elements, easyRound(), game, () => undefined);
 
     expect(elements.form.hidden).toBe(true);
@@ -177,7 +180,7 @@ describe('the easy-mode choice list', () => {
     renderChoices(
       elements,
       easyRound(),
-      createGame(ANSWER, EASY_GUESSES),
+      createGame(ANSWER, OFFERED_GUESSES),
       onPick,
     );
     buttons()[1]?.click();
@@ -188,7 +191,7 @@ describe('the easy-mode choice list', () => {
     // Removing it would take away the row the player is reading the distance
     // and arrow off, and hiding the miss is the opposite of the point.
     const game = submitGuess(
-      createGame(ANSWER, EASY_GUESSES),
+      createGame(ANSWER, OFFERED_GUESSES),
       CHOICES[0] as ShelfFeature,
     );
     renderChoices(elements, easyRound(), game, () => undefined);
@@ -202,7 +205,7 @@ describe('the easy-mode choice list', () => {
   it('closes the list and marks the answer once the round is over', () => {
     const lost = [CHOICES[0], CHOICES[1]].reduce(
       (game: Game, guess) => submitGuess(game, guess as ShelfFeature),
-      createGame(ANSWER, EASY_GUESSES),
+      createGame(ANSWER, OFFERED_GUESSES),
     );
     expect(lost.status).toBe('lost');
     renderChoices(elements, easyRound(), lost, () => undefined);
@@ -216,14 +219,14 @@ describe('the easy-mode choice list', () => {
     ).toBe(ANSWER.properties.name);
   });
 
-  it('offers exactly as many names as easy mode promises', () => {
+  it('offers exactly as many names as the level promises', () => {
     renderChoices(
       elements,
       easyRound(),
-      createGame(ANSWER, EASY_GUESSES),
+      createGame(ANSWER, OFFERED_GUESSES),
       () => undefined,
     );
-    expect(buttons()).toHaveLength(EASY_CHOICES);
+    expect(buttons()).toHaveLength(OFFERED_NAMES);
   });
 });
 
@@ -257,22 +260,25 @@ describe('the level control', () => {
       (b) => b.dataset['level'] === level,
     ) as HTMLButtonElement;
 
-  it('bars hard on the daily round and nothing else', () => {
-    renderMode(elements, 'daily', 'normal');
-    expect(levelButton('hard').disabled).toBe(true);
+  it('bars insane on the daily round and nothing else', () => {
+    // Insane is the only level that changes which shelf the day gets, so it
+    // is the only one that cannot go there.
+    renderMode(elements, 'daily', 'medium');
+    expect(levelButton('insane').disabled).toBe(true);
     expect(levelButton('easy').disabled).toBe(false);
-    expect(levelButton('normal').disabled).toBe(false);
+    expect(levelButton('medium').disabled).toBe(false);
+    expect(levelButton('hard').disabled).toBe(false);
   });
 
-  it('opens hard up in practice', () => {
-    renderMode(elements, 'practice', 'normal');
-    expect(levelButton('hard').disabled).toBe(false);
+  it('opens insane up in practice', () => {
+    renderMode(elements, 'practice', 'medium');
+    expect(levelButton('insane').disabled).toBe(false);
   });
 
   it('marks the level being played', () => {
     renderMode(elements, 'daily', 'easy');
     expect(levelButton('easy').getAttribute('aria-pressed')).toBe('true');
-    expect(levelButton('normal').getAttribute('aria-pressed')).toBe('false');
+    expect(levelButton('medium').getAttribute('aria-pressed')).toBe('false');
   });
 });
 
